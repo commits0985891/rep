@@ -242,6 +242,7 @@
             ThemeItems = { },
 
             SetFlags = { },
+            Defaults = { },
             DependencyMap = { },
 
             UnnamedConnections = 0,
@@ -898,18 +899,12 @@
             Library:SafeCall(function()
                 for Flag, SetFunction in Library.SetFlags do
                     if Unwrapped[Flag] == nil then
-                        local CurrentValue = Library.Flags[Flag]
-                        if type(CurrentValue) == "boolean" then
-                            SetFunction(false)
-                        elseif type(CurrentValue) == "number" then
-                            SetFunction(0)
-                        elseif type(CurrentValue) == "string" then
-                            SetFunction("")
-                        elseif type(CurrentValue) == "table" then
-                            if CurrentValue.Color then
-                                SetFunction("#FFFFFF", 0)
-                            elseif CurrentValue.Key then
-                                SetFunction({Key = "Enum.KeyCode.Backspace", Mode = "Toggle"})
+                        local DefaultValue = Library.Defaults and Library.Defaults[Flag]
+                        if DefaultValue ~= nil then
+                            if type(DefaultValue) == "table" and DefaultValue.Color then
+                                SetFunction(DefaultValue.Color, DefaultValue.Alpha or 0)
+                            else
+                                SetFunction(DefaultValue)
                             end
                         end
                     end
@@ -2499,6 +2494,7 @@
                 Colorpicker:Set(Data.Default, Data.Alpha)
             end
 
+            Library.Defaults[Data.Flag] = {Color = Data.Default or Color3.fromRGB(255, 255, 255), Alpha = Data.Alpha or 0}
             Library.SetFlags[Data.Flag] = function(Color, Alpha)
                 Colorpicker:Set(Color, Alpha)
             end
@@ -2911,6 +2907,10 @@
                 })
             end
 
+            Library.Defaults[Data.Flag] = {
+                Key = Data.Default,
+                Mode = Data.Mode or "Toggle"
+            }
             Library.SetFlags[Data.Flag] = function(Value)
                 Keybind:Set(Value)
             end
@@ -4227,6 +4227,7 @@
                 Toggle:Set(Toggle.Default)
             end
 
+            Library.Defaults[Toggle.Flag] = Toggle.Default
             Library.SetFlags[Toggle.Flag] = function(Value)
                 Toggle:Set(Value)
             end
@@ -4543,6 +4544,7 @@
                 Slider:Set(Slider.Default)
             end
 
+            Library.Defaults[Slider.Flag] = Slider.Default
             Library.SetFlags[Slider.Flag] = function(Value)
                 Slider:Set(Value)
             end
@@ -4971,6 +4973,7 @@
                 Dropdown:Set(Dropdown.Default)
             end
 
+            Library.Defaults[Dropdown.Flag] = Dropdown.Default
             Library.SetFlags[Dropdown.Flag] = function(Value)
                 Dropdown:Set(Value)            
             end
@@ -5231,6 +5234,7 @@
                 Textbox:Set(Textbox.Default)
             end
 
+            Library.Defaults[Textbox.Flag] = Textbox.Default
             Library.SetFlags[Textbox.Flag] = function(Value)
                 Textbox:Set(Value)
             end
@@ -5559,6 +5563,7 @@
                 Listbox:Set(Listbox.Default)
             end
 
+            Library.Defaults[Listbox.Flag] = Listbox.Default
             Library.SetFlags[Listbox.Flag] = function(Value)
                 Listbox:Set(Value)
             end
