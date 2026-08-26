@@ -863,7 +863,8 @@
                     if type(Value) == "table" and Value.Key then
                         Config[Index] = {v = {Key = tostring(Value.Key), Mode = Value.Mode}}
                     elseif type(Value) == "table" and Value.Color then
-                        Config[Index] = {v = {Color = "#" .. Value.HexValue, Alpha = Value.Alpha}}
+                        local hex = Value.HexValue or (typeof(Value.Color) == "Color3" and Value.Color:ToHex()) or "ffffff"
+                        Config[Index] = {v = {Color = "#" .. hex, Alpha = Value.Alpha or 0}}
                     else
                         Config[Index] = {v = Value}
                     end
@@ -874,18 +875,9 @@
         end
 
         Library.LoadConfig = function(self, Config)
-            local Decoded = HttpService:JSONDecode(Config)
-
-            local isNewFormat = false
-            for _, Entry in Decoded do
-                if type(Entry) == "table" and Entry.v ~= nil then
-                    isNewFormat = true
-                    break
-                end
-            end
-
-            if not isNewFormat then
-                Library:Notification("This config has been invalidated. Please make a new one.", 5, Color3.fromRGB(255, 50, 50))
+            local ok, Decoded = pcall(function() return HttpService:JSONDecode(Config) end)
+            if not ok or type(Decoded) ~= "table" then
+                Library:Notification("Invalid config file format.", 5, Color3.fromRGB(255, 50, 50))
                 return
             end
 
@@ -893,12 +885,15 @@
             for Index, Entry in Decoded do
                 if type(Entry) == "table" and Entry.v ~= nil then
                     Unwrapped[Index] = Entry.v
+                else
+                    Unwrapped[Index] = Entry
                 end
             end
 
-            Library:SafeCall(function()
+            local Success, Result = Library:SafeCall(function()
                 for Flag, SetFunction in Library.SetFlags do
-                    if Unwrapped[Flag] == nil then
+                    local Val = Unwrapped[Flag]
+                    if Val == nil then
                         local DefaultValue = Library.Defaults and Library.Defaults[Flag]
                         if DefaultValue ~= nil then
                             if type(DefaultValue) == "table" and DefaultValue.Color then
@@ -907,35 +902,14 @@
                                 SetFunction(DefaultValue)
                             end
                         end
-                    end
-                end
-            end)
-
-            local Success, Result = Library:SafeCall(function()
-                for Index, Value in Unwrapped do 
-                    if type(Value) == "table" and Value.Color then
-                        local SetFunction = Library.SetFlags[Index]
-                        if SetFunction then
-                            SetFunction(Value.Color, Value.Alpha)
-                        end
-                    end
-                end
-
-                for Index, Value in Unwrapped do 
-                    if type(Value) == "table" and Value.Color then
-                        continue
-                    end
-
-                    local SetFunction = Library.SetFlags[Index]
-
-                    if not SetFunction then
-                        continue
-                    end
-
-                    if type(Value) == "table" and Value.Key then 
-                        SetFunction(Value)
                     else
-                        SetFunction(Value)
+                        if type(Val) == "table" and Val.Color ~= nil then
+                            SetFunction(Val.Color, Val.Alpha)
+                        elseif type(Val) == "table" and Val.Key ~= nil then
+                            SetFunction(Val)
+                        else
+                            SetFunction(Val)
+                        end
                     end
                 end
             end)
@@ -2276,14 +2250,21 @@
             end
 
             function Colorpicker:Set(Color, Alpha, isFromHexInput)
-                if type(Color) == "table" then 
-                    Alpha = Color[4]
-                    Color = FromRGB(Color[1], Color[2], Color[3])
-                elseif type(Color) == "string" then 
+                if type(Color) == "table" then
+                    if Color.Color ~= nil then
+                        Alpha = Color.Alpha or Alpha
+                        Color = Color.Color
+                    elseif Color[1] ~= nil and Color[2] ~= nil and Color[3] ~= nil then
+                        Alpha = Color[4] or Alpha
+                        Color = FromRGB(Color[1], Color[2], Color[3])
+                    end
+                end
+
+                if type(Color) == "string" then 
                     local parsedC, parsedA = ParseHex(Color)
                     if parsedC then
                         Color = parsedC
-                        if parsedA then Alpha = parsedA end
+                        if parsedA ~= nil then Alpha = parsedA end
                     else
                         local ok, res = pcall(FromHex, Color)
                         if ok and res then
@@ -2292,6 +2273,8 @@
                             Color = FromRGB(255, 255, 255)
                         end
                     end
+                elseif typeof(Color) ~= "Color3" then
+                    Color = FromRGB(255, 255, 255)
                 end
 
                 self.Hue, self.Saturation, self.Value = Color:ToHSV()
@@ -2496,7 +2479,11 @@
 
             Library.Defaults[Data.Flag] = {Color = Data.Default or Color3.fromRGB(255, 255, 255), Alpha = Data.Alpha or 0}
             Library.SetFlags[Data.Flag] = function(Color, Alpha)
-                Colorpicker:Set(Color, Alpha)
+                if type(Color) == "table" and Color.Color ~= nil then
+                    Colorpicker:Set(Color.Color, Color.Alpha or Alpha)
+                else
+                    Colorpicker:Set(Color, Alpha)
+                end
             end
 
             return Colorpicker
@@ -4192,7 +4179,6 @@
                 Colorpicker.Count = Count
 
                 local Extension = Library:CreateColorpicker(Colorpicker)
-                Library.Flags[Colorpicker.Flag] = Extension
 
                 return self, Extension
             end
@@ -4214,7 +4200,6 @@
                 }
 
                 local Extension = Library:CreateKeybind(Keybind)
-                Library.Flags[Keybind.Flag] = Extension
 
                 return self, Extension
             end
