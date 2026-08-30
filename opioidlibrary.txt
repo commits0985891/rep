@@ -692,345 +692,364 @@ local Library do
     end
 
 
-        Library.ConfirmDialog = function(self, Title, Message, OnConfirm, OnCancel)
-            local Items = {}
-            
-            local DialogHolder = Instances:Create("ScreenGui", {
-                Parent = gethui(),
-                Name = "\0",
-                ResetOnSpawn = false,
-                DisplayOrder = 999,
-                ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-            })
+    Library.ConfirmDialog = function(self, Title, Message, OnConfirm, OnCancel)
+        local dialogGui = InstanceNew("ScreenGui")
+        dialogGui.Name = "\0"
+        dialogGui.ResetOnSpawn = false
+        dialogGui.DisplayOrder = 999
+        dialogGui.IgnoreGuiInset = true
+        dialogGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        dialogGui.Parent = gethui()
 
-            local Overlay = Instances:Create("Frame", {
-                Parent = DialogHolder.Instance,
-                Name = "\0",
-                Size = UDim2New(1, 0, 1, 0),
-                BackgroundColor3 = FromRGB(0, 0, 0),
-                BackgroundTransparency = 0.5,
-                BorderSizePixel = 0,
-                ZIndex = 1
-            })
+        local snowParticles = {}
+        local snowRunning = true
 
-            Items["Dialog"] = Instances:Create("Frame", {
-                Parent = DialogHolder.Instance,
-                Name = "\0",
-                AnchorPoint = Vector2New(0.5, 0.5),
-                Position = UDim2New(0.5, 0, 0.5, 0),
-                Size = UDim2New(0, 300, 0, 140),
-                BackgroundColor3 = Library.Theme["Background"],
-                BorderSizePixel = 0,
-                ZIndex = 2
-            })
-            Items["Dialog"]:AddToTheme({BackgroundColor3 = "Background"})
+        local overlay = InstanceNew("TextButton")
+        overlay.Name = "\0"
+        overlay.Text = ""
+        overlay.AutoButtonColor = false
+        overlay.Size = UDim2New(1, 0, 1, 0)
+        overlay.BackgroundColor3 = FromRGB(0, 0, 0)
+        overlay.BackgroundTransparency = 1
+        overlay.BorderSizePixel = 0
+        overlay.ZIndex = 50000
+        overlay.Parent = dialogGui
 
-            Instances:Create("UIStroke", {
-                Parent = Items["Dialog"].Instance,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                Color = Library.Theme["Outline"],
-                Thickness = 1
-            }):AddToTheme({Color = "Outline"})
+        local Items = { }
 
-            Instances:Create("UICorner", {
-                Parent = Items["Dialog"].Instance,
-                CornerRadius = UDimNew(0, 4)
-            })
+        Items["Dialog"] = Instances:Create("Frame", {
+            Parent = dialogGui,
+            Name = "\0",
+            AnchorPoint = Vector2New(0.5, 0.5),
+            Position = UDim2New(0.5, 0, 0.5, 0),
+            Size = UDim2New(0, 260, 0, 110),
+            BorderColor3 = FromRGB(10, 10, 10),
+            BorderSizePixel = 2,
+            BackgroundColor3 = FromRGB(18, 18, 23),
+            BackgroundTransparency = 1,
+            ZIndex = 50100
+        })  Items["Dialog"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
 
-            Items["Title"] = Instances:Create("TextLabel", {
-                Parent = Items["Dialog"].Instance,
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(255, 170, 50),
-                Text = Title or "WARNING",
-                Name = "\0",
-                BackgroundTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                Position = UDim2New(0, 10, 0, 10),
-                Size = UDim2New(1, -20, 0, 20),
-                BorderSizePixel = 0,
-                TextSize = 14,
-                ZIndex = 3
-            })
+        Instances:Create("UIStroke", {
+            Parent = Items["Dialog"].Instance,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0",
+            Color = FromRGB(27, 27, 32),
+            Thickness = 1
+        }):AddToTheme({Color = "Outline"})
 
-            Items["Message"] = Instances:Create("TextLabel", {
-                Parent = Items["Dialog"].Instance,
-                FontFace = Library.Font,
-                TextColor3 = Library.Theme["Text"],
-                Text = Message or "Are you sure?",
-                Name = "\0",
-                BackgroundTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Top,
-                TextWrapped = true,
-                Position = UDim2New(0, 10, 0, 40),
-                Size = UDim2New(1, -20, 0, 50),
-                BorderSizePixel = 0,
-                TextSize = 12,
-                ZIndex = 3
-            })
-            Items["Message"]:AddToTheme({TextColor3 = "Text"})
+        Items["AccentLine"] = Instances:Create("Frame", {
+            Parent = Items["Dialog"].Instance,
+            Name = "\0",
+            Position = UDim2New(0, 0, 0, -1),
+            Size = UDim2New(1, 0, 0, 2),
+            BorderSizePixel = 0,
+            BackgroundColor3 = FromRGB(185, 208, 250),
+            BackgroundTransparency = 1,
+            ZIndex = 50101
+        })
 
-            Items["ButtonContainer"] = Instances:Create("Frame", {
-                Parent = Items["Dialog"].Instance,
-                Name = "\0",
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, 10, 1, -40),
-                Size = UDim2New(1, -20, 0, 30),
-                BorderSizePixel = 0,
-                ZIndex = 3
-            })
+        Instances:Create("UIGradient", {
+            Parent = Items["AccentLine"].Instance,
+            Rotation = 90,
+            Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(65, 65, 65))}
+        })
 
-            local function closeDialog()
-                DialogHolder.Instance:Destroy()
-            end
+        Items["Title"] = Instances:Create("TextLabel", {
+            Parent = Items["Dialog"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(255, 170, 50),
+            Text = Title or "WARNING",
+            Name = "\0",
+            BackgroundTransparency = 1,
+            TextTransparency = 1,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Position = UDim2New(0, 8, 0, 6),
+            Size = UDim2New(1, -16, 0, 16),
+            BorderSizePixel = 0,
+            TextSize = 13,
+            ZIndex = 50101,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })
 
-            Items["YesButton"] = Instances:Create("TextButton", {
-                Parent = Items["ButtonContainer"].Instance,
-                Name = "\0",
-                Text = "YES",
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(200, 200, 200),
-                TextSize = 12,
-                AutoButtonColor = false,
-                Position = UDim2New(0, 0, 0, 0),
-                Size = UDim2New(0.485, 0, 1, 0),
-                BorderSizePixel = 0,
-                BackgroundColor3 = FromRGB(40, 65, 40),
-                ZIndex = 4
-            })
+        Instances:Create("UIStroke", {
+            Parent = Items["Title"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0"
+        }):AddToTheme({Color = "Text Border"})
 
-            Instances:Create("UICorner", {
-                Parent = Items["YesButton"].Instance,
-                CornerRadius = UDimNew(0, 4)
-            })
+        Instances:Create("Frame", {
+            Parent = Items["Dialog"].Instance,
+            Name = "\0",
+            Position = UDim2New(0, 4, 0, 26),
+            Size = UDim2New(1, -8, 0, 1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = FromRGB(40, 40, 45),
+            BackgroundTransparency = 1,
+            ZIndex = 50101
+        })
 
-            Items["YesButton"]:Connect("MouseButton1Click", function()
-                if OnConfirm then
-                    OnConfirm()
-                end
-                closeDialog()
-            end)
+        Items["Message"] = Instances:Create("TextLabel", {
+            Parent = Items["Dialog"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(200, 200, 200),
+            Text = Message or "Are you sure?",
+            Name = "\0",
+            BackgroundTransparency = 1,
+            TextTransparency = 1,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            TextWrapped = true,
+            Position = UDim2New(0, 8, 0, 32),
+            Size = UDim2New(1, -16, 0, 36),
+            BorderSizePixel = 0,
+            TextSize = 12,
+            ZIndex = 50101,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })  Items["Message"]:AddToTheme({TextColor3 = "Text"})
 
-            Items["NoButton"] = Instances:Create("TextButton", {
-                Parent = Items["ButtonContainer"].Instance,
-                Name = "\0",
-                Text = "NO",
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(200, 200, 200),
-                TextSize = 12,
-                AutoButtonColor = false,
-                Position = UDim2New(0.515, 0, 0, 0),
-                Size = UDim2New(0.485, 0, 1, 0),
-                BorderSizePixel = 0,
-                BackgroundColor3 = FromRGB(65, 40, 40),
-                ZIndex = 4
-            })
+        Instances:Create("UIStroke", {
+            Parent = Items["Message"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0"
+        }):AddToTheme({Color = "Text Border"})
 
-            Instances:Create("UICorner", {
-                Parent = Items["NoButton"].Instance,
-                CornerRadius = UDimNew(0, 4)
-            })
+        Items["ButtonContainer"] = Instances:Create("Frame", {
+            Parent = Items["Dialog"].Instance,
+            Name = "\0",
+            BackgroundTransparency = 1,
+            Position = UDim2New(0, 8, 1, -32),
+            Size = UDim2New(1, -16, 0, 24),
+            BorderSizePixel = 0,
+            ZIndex = 50101,
+            BackgroundColor3 = FromRGB(18, 18, 23)
+        })
 
-            Items["NoButton"]:Connect("MouseButton1Click", function()
-                if OnCancel then
-                    OnCancel()
-                end
-                closeDialog()
-            end)
-        end
-
-
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDimNew(0, 8),
-                HorizontalAlignment = Enum.HorizontalAlignment.Center
-            })
-
-            Items["Confirm"] = Instances:Create("TextButton", {
-                Parent = Items["ButtonHolder"].Instance,
-                FontFace = Library.Font,
-                Text = Popup.ConfirmText,
-                TextColor3 = FromRGB(215, 215, 215),
-                BorderColor3 = FromRGB(10, 10, 10),
-                BorderSizePixel = 2,
-                AutoButtonColor = false,
-                Size = UDim2New(0.5, -4, 0, 24),
-                TextSize = 12,
-                ZIndex = 1002,
-                BackgroundColor3 = FromRGB(33, 33, 36),
-                Name = "\0"
-            })
-            Items["Confirm"]:AddToTheme({BackgroundColor3 = "Element", BorderColor3 = "Border", TextColor3 = "Text"})
-
-            Instances:Create("UIGradient", {
-                Parent = Items["Confirm"].Instance,
-                Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
-            })
-
-            Instances:Create("UIStroke", {
-                Parent = Items["Confirm"].Instance,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0",
-                Color = FromRGB(27, 27, 32)
-            }):AddToTheme({Color = "Outline"})
-
-            Items["Cancel"] = Instances:Create("TextButton", {
-                Parent = Items["ButtonHolder"].Instance,
-                FontFace = Library.Font,
-                Text = Popup.CancelText,
-                TextColor3 = FromRGB(215, 215, 215),
-                BorderColor3 = FromRGB(10, 10, 10),
-                BorderSizePixel = 2,
-                AutoButtonColor = false,
-                Size = UDim2New(0.5, -4, 0, 24),
-                TextSize = 12,
-                ZIndex = 1002,
-                BackgroundColor3 = FromRGB(33, 33, 36),
-                Name = "\0"
-            })
-            Items["Cancel"]:AddToTheme({BackgroundColor3 = "Element", BorderColor3 = "Border", TextColor3 = "Text"})
-
-            Instances:Create("UIGradient", {
-                Parent = Items["Cancel"].Instance,
-                Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
-            })
-
-            Instances:Create("UIStroke", {
-                Parent = Items["Cancel"].Instance,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0",
-                Color = FromRGB(27, 27, 32)
-            }):AddToTheme({Color = "Outline"})
-        end
-
-        local SafeTween = function(Instance, Info, Goal)
-            if Closed or not Instance or not Instance.Parent then return end
-            local Tween = TweenService:Create(Instance, Info, Goal)
-            Tween:Play()
-            return Tween
-        end
-
-        local OpenTime = Library.Tween.Time
-        Items["Popup"].Instance.BackgroundTransparency = 1
-        task.defer(function()
-            TweenService:Create(Items["Backdrop"].Instance, CachedQuartTweenInfo, {
-                BackgroundTransparency = 0.5
-            }):Play()
-            TweenService:Create(Items["Popup"].Instance, CachedQuartTweenInfo, {
-                BackgroundTransparency = 0
-            }):Play()
-        end)
-
-        task.delay(0.1, function()
-            if not Closed then
-                Items["Input"].Instance:CaptureFocus()
-            end
-        end)
-
-        local HoverTweenInfo = CachedHoverTweenInfo
-
-        Items["Confirm"]:OnHover(function()
-            if not Closed then
-                TweenService:Create(Items["Confirm"].Instance, HoverTweenInfo, {
-                    BackgroundColor3 = Library.Theme["Hovered Element"]
-                }):Play()
-            end
-        end)
-        Items["Confirm"]:OnHoverLeave(function()
-            if not Closed then
-                TweenService:Create(Items["Confirm"].Instance, HoverTweenInfo, {
-                    BackgroundColor3 = Library.Theme["Element"]
-                }):Play()
-            end
-        end)
-        Items["Cancel"]:OnHover(function()
-            if not Closed then
-                TweenService:Create(Items["Cancel"].Instance, HoverTweenInfo, {
-                    BackgroundColor3 = Library.Theme["Hovered Element"]
-                }):Play()
-            end
-        end)
-        Items["Cancel"]:OnHoverLeave(function()
-            if not Closed then
-                TweenService:Create(Items["Cancel"].Instance, HoverTweenInfo, {
-                    BackgroundColor3 = Library.Theme["Element"]
-                }):Play()
-            end
-        end)
-
-        local Close = function()
-            if Closed then return end
-            Closed = true
-
-            local CloseTime = Library.Tween.Time
-            if Items["Backdrop"] and Items["Backdrop"].Instance and Items["Backdrop"].Instance.Parent then
-                TweenService:Create(Items["Backdrop"].Instance, CachedQuartTweenInfo, {
-                    BackgroundTransparency = 1
-                }):Play()
-            end
-            if Items["Popup"] and Items["Popup"].Instance then
-                TweenService:Create(Items["Popup"].Instance, CachedQuartTweenInfo, {
-                    BackgroundTransparency = 1
-                }):Play()
-                for _, child in Items["Popup"].Instance:GetDescendants() do
-                    local props = Library:GetTransparencyPropertyFromItem(child)
-                    if props then
-                        local propList = type(props) == "table" and props or { props }
-                        for _, prop in propList do
-                            TweenService:Create(child, CachedQuartTweenInfo, {
-                                [prop] = 1
-                            }):Play()
-                        end
+        local function closeDialog()
+            pcall(function()
+                snowRunning = false
+                local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                TweenService:Create(overlay, tweenInfo, {BackgroundTransparency = 1}):Play()
+                TweenService:Create(Items["Dialog"].Instance, tweenInfo, {BackgroundTransparency = 1}):Play()
+                for _, desc in Items["Dialog"].Instance:GetDescendants() do
+                    if desc:IsA("UIStroke") then
+                        TweenService:Create(desc, tweenInfo, {Transparency = 1}):Play()
+                    elseif desc:IsA("TextLabel") then
+                        TweenService:Create(desc, tweenInfo, {TextTransparency = 1}):Play()
+                    elseif desc:IsA("Frame") or desc:IsA("TextButton") then
+                        TweenService:Create(desc, tweenInfo, {BackgroundTransparency = 1}):Play()
                     end
                 end
-            end
-
-            task.delay(CloseTime + 0.05, function()
-                if Items["Backdrop"] and Items["Backdrop"].Instance and Items["Backdrop"].Instance.Parent then
-                    Items["Backdrop"]:Clean()
+                for _, p in snowParticles do
+                    pcall(function()
+                        TweenService:Create(p, tweenInfo, {BackgroundTransparency = 1}):Play()
+                    end)
                 end
+                task.wait(0.3)
+                dialogGui:Destroy()
             end)
         end
 
-        local function DoConfirm()
-            if Closed then return end
-            local NewName = Items["Input"].Instance.Text
-            if not NewName or NewName == "" then
-                Library:Notification("Enter a name first", 3, FromRGB(255, 70, 70))
-                return
+        Items["YesButton"] = Instances:Create("TextButton", {
+            Parent = Items["ButtonContainer"].Instance,
+            Name = "\0",
+            Text = "",
+            AutoButtonColor = false,
+            Position = UDim2New(0, 0, 0, 0),
+            Size = UDim2New(0.485, 0, 1, 0),
+            BorderColor3 = FromRGB(10, 10, 10),
+            BorderSizePixel = 2,
+            BackgroundColor3 = FromRGB(40, 65, 40),
+            BackgroundTransparency = 1,
+            ZIndex = 50102
+        })
+
+        Instances:Create("UIGradient", {
+            Parent = Items["YesButton"].Instance,
+            Rotation = 90,
+            Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+        })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["YesButton"].Instance,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0",
+            Color = FromRGB(27, 27, 32)
+        }):AddToTheme({Color = "Outline"})
+
+        Items["YesText"] = Instances:Create("TextLabel", {
+            Parent = Items["YesButton"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(100, 255, 100),
+            Text = "Yes",
+            Name = "\0",
+            BackgroundTransparency = 1,
+            TextTransparency = 1,
+            Size = UDim2New(1, 0, 1, 0),
+            Position = UDim2New(0, 0, 0, -1),
+            BorderSizePixel = 0,
+            TextSize = 12,
+            ZIndex = 50103,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["YesText"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0"
+        }):AddToTheme({Color = "Text Border"})
+
+        Items["NoButton"] = Instances:Create("TextButton", {
+            Parent = Items["ButtonContainer"].Instance,
+            Name = "\0",
+            Text = "",
+            AutoButtonColor = false,
+            Position = UDim2New(0.515, 0, 0, 0),
+            Size = UDim2New(0.485, 0, 1, 0),
+            BorderColor3 = FromRGB(10, 10, 10),
+            BorderSizePixel = 2,
+            BackgroundColor3 = FromRGB(65, 35, 35),
+            BackgroundTransparency = 1,
+            ZIndex = 50102
+        })
+
+        Instances:Create("UIGradient", {
+            Parent = Items["NoButton"].Instance,
+            Rotation = 90,
+            Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+        })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["NoButton"].Instance,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0",
+            Color = FromRGB(27, 27, 32)
+        }):AddToTheme({Color = "Outline"})
+
+        Items["NoText"] = Instances:Create("TextLabel", {
+            Parent = Items["NoButton"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(255, 100, 100),
+            Text = "No",
+            Name = "\0",
+            BackgroundTransparency = 1,
+            TextTransparency = 1,
+            Size = UDim2New(1, 0, 1, 0),
+            Position = UDim2New(0, 0, 0, -1),
+            BorderSizePixel = 0,
+            TextSize = 12,
+            ZIndex = 50103,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["NoText"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0"
+        }):AddToTheme({Color = "Text Border"})
+
+        Items["YesButton"]:OnHover(function()
+            Items["YesButton"]:Tween(nil, {BackgroundColor3 = FromRGB(50, 80, 50)})
+        end)
+        Items["YesButton"]:OnHoverLeave(function()
+            Items["YesButton"]:Tween(nil, {BackgroundColor3 = FromRGB(40, 65, 40)})
+        end)
+        Items["NoButton"]:OnHover(function()
+            Items["NoButton"]:Tween(nil, {BackgroundColor3 = FromRGB(80, 45, 45)})
+        end)
+        Items["NoButton"]:OnHoverLeave(function()
+            Items["NoButton"]:Tween(nil, {BackgroundColor3 = FromRGB(65, 35, 35)})
+        end)
+
+        Items["YesButton"]:Connect("MouseButton1Down", function()
+            closeDialog()
+            if OnConfirm then
+                Library:SafeCall(OnConfirm)
             end
+        end)
 
-            NewName = StringGSub(NewName, "%.json$", "")
+        Items["NoButton"]:Connect("MouseButton1Down", function()
+            closeDialog()
+            if OnCancel then
+                Library:SafeCall(OnCancel)
+            end
+        end)
 
-            TweenService:Create(Items["Confirm"].Instance, CachedHoverTweenInfo, {
-                BackgroundColor3 = Library.Theme["Accent"]
-            }):Play()
-
-            task.wait(0.1)
-            Library:SafeCall(Popup.OnConfirm, NewName)
-            Close()
+        for _, desc in Items["Dialog"].Instance:GetDescendants() do
+            if desc:IsA("UIStroke") then
+                desc.Transparency = 1
+            elseif desc:IsA("TextLabel") then
+                desc.TextTransparency = 1
+            elseif desc:IsA("Frame") or desc:IsA("TextButton") then
+                desc.BackgroundTransparency = 1
+            end
         end
 
-        Items["Confirm"]:Connect("MouseButton1Down", DoConfirm)
-        Items["Cancel"]:Connect("MouseButton1Down", function()
-            Close()
-            Library:SafeCall(Popup.OnCancel)
-        end)
-        Items["Backdrop"]:Connect("MouseButton1Down", function()
-            Close()
-            Library:SafeCall(Popup.OnCancel)
-        end)
+        local function spawnSnowflake()
+            local size = math.random(2, 5)
+            local startX = math.random(0, 100) / 100
+            local drift = (math.random(-15, 15)) / 100
+            local duration = math.random(20, 40) / 10
+            local alpha = math.random(3, 7) / 10
 
-        Items["Input"]:Connect("FocusLost", function(EnterPressed)
-            if EnterPressed and not Closed then
-                DoConfirm()
+            local flake = InstanceNew("Frame")
+            flake.Name = "\0"
+            flake.Size = UDim2New(0, size, 0, size)
+            flake.Position = UDim2New(startX, 0, -0.02, 0)
+            flake.BackgroundColor3 = FromRGB(
+                math.random(160, 200),
+                math.random(200, 225),
+                math.random(235, 255)
+            )
+            flake.BackgroundTransparency = 1 - alpha
+            flake.BorderSizePixel = 0
+            flake.ZIndex = 50001
+            flake.Parent = overlay
+
+            local corner = InstanceNew("UICorner")
+            corner.CornerRadius = UDimNew(1, 0)
+            corner.Parent = flake
+
+            table.insert(snowParticles, flake)
+
+            local endX = startX + drift
+            TweenService:Create(flake, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+                Position = UDim2New(endX, 0, 1.05, 0),
+                BackgroundTransparency = 0.85
+            }):Play()
+
+            task.delay(duration, function()
+                pcall(function() flake:Destroy() end)
+            end)
+        end
+
+        Library:Thread(function()
+            local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            TweenService:Create(overlay, tweenInfo, {BackgroundTransparency = 0.4}):Play()
+            TweenService:Create(Items["Dialog"].Instance, tweenInfo, {BackgroundTransparency = 0}):Play()
+            for _, desc in Items["Dialog"].Instance:GetDescendants() do
+                if desc == Items["ButtonContainer"].Instance then continue end
+                if desc:IsA("UIStroke") then
+                    TweenService:Create(desc, tweenInfo, {Transparency = 0}):Play()
+                elseif desc:IsA("TextLabel") then
+                    TweenService:Create(desc, tweenInfo, {TextTransparency = 0}):Play()
+                elseif desc:IsA("Frame") or desc:IsA("TextButton") then
+                    TweenService:Create(desc, tweenInfo, {BackgroundTransparency = 0}):Play()
+                end
+            end
+
+            for i = 1, 8 do
+                spawnSnowflake()
+            end
+
+            while snowRunning do
+                task.wait(math.random(8, 20) / 100)
+                if not snowRunning then break end
+                spawnSnowflake()
             end
         end)
-
-        return Popup
     end
 
     Library.Unload = function(self)
