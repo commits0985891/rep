@@ -9983,12 +9983,13 @@ local Library do
                 AnchorPoint = Vector2New(0, 0),
                 Name = "\0",
                 Position = UDim2New(0, 0, 0, 0),
-                Size = UDim2New(0, 65, 0, 52),
+                Size = UDim2New(0, 60, 0, 0),
                 BorderSizePixel = 2,
                 Visible = false,
-                ZIndex = 80,
-                BackgroundColor3 = FromRGB(15, 15, 20)
-            })  Items["Window"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
+                ZIndex = 100,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundColor3 = FromRGB(20, 20, 25)
+            })  Items["Window"]:AddToTheme({BackgroundColor3 = "Inline", BorderColor3 = "Border"})
 
             Instances:Create("UIStroke", {
                 Parent = Items["Window"].Instance,
@@ -9998,81 +9999,81 @@ local Library do
                 Color = FromRGB(27, 27, 32)
             }):AddToTheme({Color = "Outline"})
 
-            Items["Toggle"] = Instances:Create("TextButton", {
+            Instances:Create("UIPadding", {
                 Parent = Items["Window"].Instance,
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(215, 215, 215),
-                BorderColor3 = FromRGB(0, 0, 0),
-                Text = "Toggle",
-                AutoButtonColor = false,
                 Name = "\0",
-                BorderSizePixel = 0,
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, 0, 0, 2),
-                Size = UDim2New(1, 0, 0, 16),
-                TextSize = 12,
-                ZIndex = 85,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["Toggle"]:AddToTheme({TextColor3 = "Text"})
+                PaddingTop = UDimNew(0, 4),
+                PaddingBottom = UDimNew(0, 4),
+                PaddingRight = UDimNew(0, 6),
+                PaddingLeft = UDimNew(0, 6)
+            })
 
-            Instances:Create("UIStroke", {
-                Parent = Items["Toggle"].Instance,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0"
-            }):AddToTheme({Color = "Text Border"})
-
-            Items["Hold"] = Instances:Create("TextButton", {
+            Instances:Create("UIListLayout", {
                 Parent = Items["Window"].Instance,
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(215, 215, 215),
-                BorderColor3 = FromRGB(0, 0, 0),
-                Text = "Hold",
-                AutoButtonColor = false,
                 Name = "\0",
-                BorderSizePixel = 0,
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, 0, 0, 18),
-                Size = UDim2New(1, 0, 0, 16),
-                TextSize = 12,
-                ZIndex = 85,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["Hold"]:AddToTheme({TextColor3 = "Text"})
+                Padding = UDimNew(0, 2),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
 
-            Instances:Create("UIStroke", {
-                Parent = Items["Hold"].Instance,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0"
-            }):AddToTheme({Color = "Text Border"})
+            local ModeButtons = {}
+            local ModeLabels = {}
 
-            Items["Always"] = Instances:Create("TextButton", {
-                Parent = Items["Window"].Instance,
-                FontFace = Library.Font,
-                TextColor3 = FromRGB(215, 215, 215),
-                BorderColor3 = FromRGB(0, 0, 0),
-                Text = "Always",
-                AutoButtonColor = false,
-                Name = "\0",
-                BorderSizePixel = 0,
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, 0, 0, 34),
-                Size = UDim2New(1, 0, 0, 16),
-                TextSize = 12,
-                ZIndex = 85,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["Always"]:AddToTheme({TextColor3 = "Text"})
+            for order, modeName in ipairs({"Toggle", "Hold", "Always"}) do
+                local btn = Instances:Create("TextButton", {
+                    Parent = Items["Window"].Instance,
+                    Name = modeName,
+                    FontFace = Library.Font,
+                    TextColor3 = FromRGB(0, 0, 0),
+                    BorderColor3 = FromRGB(0, 0, 0),
+                    Text = "",
+                    AutoButtonColor = false,
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    Size = UDim2New(1, 0, 0, 15),
+                    LayoutOrder = order,
+                    ZIndex = 101,
+                    TextSize = 12,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })
 
-            Instances:Create("UIStroke", {
-                Parent = Items["Always"].Instance,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0"
-            }):AddToTheme({Color = "Text Border"})
+                local lbl = Instances:Create("TextLabel", {
+                    Parent = btn.Instance,
+                    Name = "\0",
+                    FontFace = Library.Font,
+                    TextColor3 = (modeName == Keybind.Mode and Library.Theme.Accent or Library.Theme.Text),
+                    BorderColor3 = FromRGB(0, 0, 0),
+                    Text = modeName,
+                    Size = UDim2New(1, 0, 1, 0),
+                    Position = UDim2New(0, 0, 0, 0),
+                    TextTransparency = (modeName == Keybind.Mode and 0 or 0.48),
+                    BackgroundTransparency = 1,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    BorderSizePixel = 0,
+                    ZIndex = 102,
+                    TextSize = 12,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })
+                lbl:AddToTheme({TextColor3 = "Text"})
+
+                Instances:Create("UIStroke", {
+                    Parent = lbl.Instance,
+                    LineJoinMode = Enum.LineJoinMode.Miter,
+                    Name = "\0"
+                }):AddToTheme({Color = "Text Border"})
+
+                btn:Connect("MouseButton1Down", function()
+                    Keybind:SetMode(modeName)
+                    Keybind:SetOpen(false)
+                end)
+
+                ModeButtons[modeName] = btn
+                ModeLabels[modeName] = lbl
+            end
+
+            Items["Toggle"] = ModeButtons["Toggle"]
+            Items["Hold"] = ModeButtons["Hold"]
+            Items["Always"] = ModeButtons["Always"]
         end
-
-        local Modes = {
-            ["Toggle"] = Items["Toggle"],
-            ["Hold"] = Items["Hold"],
-            ["Always"] = Items["Always"]
-        }
 
         local Update = function()
             if KeyListItem then
@@ -10108,46 +10109,36 @@ local Library do
 
                 local ButtonPos = Items["KeyButton"].Instance.AbsolutePosition
                 local ButtonSize = Items["KeyButton"].Instance.AbsoluteSize
-                local WindowSize = Vector2New(65, 52)
+                local WindowWidth = 60
+                local WindowHeight = 55
                 local Viewport = Camera.ViewportSize
 
-                local PosX = ButtonPos.X + ButtonSize.X - WindowSize.X
+                local PosX = ButtonPos.X + ButtonSize.X - WindowWidth
                 local PosY = ButtonPos.Y + ButtonSize.Y + 4
 
                 if PosX < 0 then PosX = 0 end
-                if PosX + WindowSize.X > Viewport.X then
-                    PosX = Viewport.X - WindowSize.X - 5
+                if PosX + WindowWidth > Viewport.X then
+                    PosX = Viewport.X - WindowWidth - 5
                 end
-                if PosY + WindowSize.Y > Viewport.Y then
-                    PosY = ButtonPos.Y - WindowSize.Y - 4
+                if PosY + WindowHeight > Viewport.Y then
+                    PosY = ButtonPos.Y - WindowHeight - 4
                 end
 
-                Items["Window"].Instance.Parent = Library.Holder.Instance
                 Items["Window"].Instance.Position = UDim2New(0, PosX, 0, PosY)
-                Items["Window"].Instance.Size = UDim2New(0, WindowSize.X, 0, WindowSize.Y)
-                Items["Window"].Instance.ZIndex = 80
+                Items["Window"].Instance.Size = UDim2New(0, WindowWidth, 0, 0)
                 Items["Window"].Instance.Visible = true
+                Items["Window"].Instance.Parent = Library.Holder.Instance
                 Library:BringToFront(Items["Window"].Instance)
-                Items["Window"]:Tween(nil, {BackgroundTransparency = 0})
 
-                for modeName, btn in pairs(Modes) do
-                    btn.Instance.Visible = true
-                    btn.Instance.ZIndex = 85
-                    btn.Instance.TextTransparency = 0
+                for modeName, lbl in pairs(ModeLabels) do
                     if modeName == Keybind.Mode then
-                        btn.Instance.TextColor3 = Library.Theme.Accent
+                        lbl:ChangeItemTheme({TextColor3 = "Accent"})
+                        lbl.Instance.TextColor3 = Library.Theme.Accent
+                        lbl.Instance.TextTransparency = 0
                     else
-                        btn.Instance.TextColor3 = Library.Theme.Text
-                    end
-                end
-
-                for Index, Value in ipairs(Items["Window"].Instance:GetDescendants()) do
-                    if Value:IsA("UIStroke") then
-                        Value.Transparency = 0
-                    elseif Value:IsA("TextButton") then
-                        Value.TextTransparency = 0
-                        Value.ZIndex = 85
-                        Value.Visible = true
+                        lbl:ChangeItemTheme({TextColor3 = "Text"})
+                        lbl.Instance.TextColor3 = Library.Theme.Text
+                        lbl.Instance.TextTransparency = 0.48
                     end
                 end
                 task.delay(0.05, function() Debounce = false end)
@@ -12396,7 +12387,6 @@ local Library do
         function Toggle:Keybind(Data)
             Data = Data or { }
 
-            local userCb = Data.Callback or Data.callback
             local Keybind = {
                 Window = self.Window,
                 Tab = self.Tab,
@@ -12407,12 +12397,7 @@ local Library do
                 Flag = Data.Flag or Data.flag or Library:NextFlag(),
                 Default = Data.Default ~= nil and Data.Default or Data.default or nil,
                 Mode = Data.Mode or Data.mode or "Toggle",
-                Callback = function(Toggled)
-                    Toggle:Set(Toggled)
-                    if userCb then
-                        Library:SafeCall(userCb, Toggled)
-                    end
-                end,
+                Callback = Data.Callback or Data.callback or function() end,
             }
 
             local Extension = Library:CreateKeybind(Keybind)
