@@ -9918,6 +9918,8 @@ local Library do
         Library.Flags[Data.Flag] = { }
 
         local KeyListItem
+        local ModeButtons = {}
+        local ModeLabels = {}
 
         local Items = { } do
             Items["KeyButton"] = Instances:Create("TextButton", {
@@ -10014,9 +10016,6 @@ local Library do
                 Padding = UDimNew(0, 2),
                 SortOrder = Enum.SortOrder.LayoutOrder
             })
-
-            local ModeButtons = {}
-            local ModeLabels = {}
 
             for order, modeName in ipairs({"Toggle", "Hold", "Always"}) do
                 local btn = Instances:Create("TextButton", {
@@ -10130,15 +10129,17 @@ local Library do
                 Items["Window"].Instance.Parent = Library.Holder.Instance
                 Library:BringToFront(Items["Window"].Instance)
 
-                for modeName, lbl in pairs(ModeLabels) do
-                    if modeName == Keybind.Mode then
-                        lbl:ChangeItemTheme({TextColor3 = "Accent"})
-                        lbl.Instance.TextColor3 = Library.Theme.Accent
-                        lbl.Instance.TextTransparency = 0
-                    else
-                        lbl:ChangeItemTheme({TextColor3 = "Text"})
-                        lbl.Instance.TextColor3 = Library.Theme.Text
-                        lbl.Instance.TextTransparency = 0.48
+                if ModeLabels then
+                    for modeName, lbl in pairs(ModeLabels) do
+                        if modeName == Keybind.Mode then
+                            lbl:ChangeItemTheme({TextColor3 = "Accent"})
+                            lbl.Instance.TextColor3 = Library.Theme.Accent
+                            lbl.Instance.TextTransparency = 0
+                        else
+                            lbl:ChangeItemTheme({TextColor3 = "Text"})
+                            lbl.Instance.TextColor3 = Library.Theme.Text
+                            lbl.Instance.TextTransparency = 0.48
+                        end
                     end
                 end
                 task.delay(0.05, function() Debounce = false end)
