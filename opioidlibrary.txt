@@ -9736,6 +9736,7 @@ local Library do
             end
 
             function Colorpicker:Update(IsFromAlpha, UpdateSyncc)
+                LPH_ATTRIBUTES(PRESET(FAST))
                 local Hue, Saturation, Value = Colorpicker.Hue, Colorpicker.Saturation, Colorpicker.Value
                 Colorpicker.Color = FromHSV(Hue, Saturation, Value)
                 Colorpicker.HexValue = Colorpicker.Color:ToHex()
@@ -9776,6 +9777,7 @@ local Library do
             end
 
             function Colorpicker:Set(Color, Alpha)
+                LPH_ATTRIBUTES(PRESET(FAST))
                 if type(Color) == "table" then
                     Color = FromRGB(Color[1], Color[2], Color[3])
                     Alpha = Color[4]
@@ -9977,6 +9979,7 @@ local Library do
             Library.Colorpickers[Colorpicker] = Colorpicker
 
             function Colorpicker:Get()
+                LPH_ATTRIBUTES(PRESET(FAST))
                 return Colorpicker.Color, Colorpicker.Alpha
             end
 
@@ -10176,6 +10179,7 @@ local Library do
         end
 
         function Keybind:Get()
+           LPH_ATTRIBUTES(PRESET(FAST))
            return Keybind.Toggled, Keybind.Key, Keybind.Mode
         end
 
@@ -10253,6 +10257,7 @@ local Library do
         end
 
         function Keybind:Set(Key)
+            LPH_ATTRIBUTES(PRESET(FAST))
             if isKeyEmpty(Key) then
                 Keybind.Key = nil
                 Keybind.Value = "None"
@@ -10360,6 +10365,7 @@ local Library do
         end
 
         function Keybind:SetMode(Mode)
+            LPH_ATTRIBUTES(PRESET(FAST))
             Keybind.Mode = Mode or "Toggle"
             if ModeLabels then
                 for modeName, lbl in pairs(ModeLabels) do
@@ -10393,6 +10399,7 @@ local Library do
         end
 
         function Keybind:Press(Bool)
+            LPH_ATTRIBUTES(PRESET(FAST))
             if Keybind.Mode == "Toggle" then
                 Keybind.Toggled = not Keybind.Toggled
             elseif Keybind.Mode == "Hold" then
@@ -14428,6 +14435,7 @@ local Library do
     end
 
     local CatmullRom = function(t, P0, P1, P2, P3)
+        LPH_ATTRIBUTES(PRESET(FAST))
         local t2 = t * t
         local t3 = t2 * t
         local X = 0.5 * ((2 * P1[1]) + (-P0[1] + P2[1]) * t + (2 * P0[1] - 5 * P1[1] + 4 * P2[1] - P3[1]) * t2 + (-P0[1] + 3 * P1[1] - 3 * P2[1] + P3[1]) * t3)
@@ -14928,6 +14936,7 @@ local Library do
         end
 
         function Bezier:Get()
+            LPH_ATTRIBUTES(PRESET(FAST))
             local ReturnPoints = { }
             for _, Pt in Bezier.Points do
                 TableInsert(ReturnPoints, { Pt[1], Pt[2] })
@@ -14936,6 +14945,7 @@ local Library do
         end
 
         function Bezier:Evaluate(t)
+            LPH_ATTRIBUTES(PRESET(FAST))
             t = MathClamp(t, 0, 1)
             if #Bezier.Points < 2 then
                 return 0
