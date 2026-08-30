@@ -647,28 +647,33 @@ local Library do
 
     task.spawn(function()
         while true do
-            if #Library.RainbowColorpickers > 0 then
-                Library.RainbowHue = (Library.RainbowHue + Library.RainbowSpeed) % 1
+            pcall(function()
+                if not Library then return end
+                if Library.RainbowColorpickers and #Library.RainbowColorpickers > 0 then
+                    Library.RainbowHue = (Library.RainbowHue + (Library.RainbowSpeed or 0.001)) % 1
 
-                local HasActive = false
-                for _, Colorpicker in Library.RainbowColorpickers do
-                    if Colorpicker.Rainbow and Colorpicker.Set then
-                        HasActive = true
-                        local Color = FromHSV(Library.RainbowHue, 1, 1)
-                        pcall(function()
-                            Colorpicker:Set(Color, Colorpicker.Alpha or 0)
-                        end)
+                    local HasActive = false
+                    for _, Colorpicker in Library.RainbowColorpickers do
+                        if Colorpicker.Rainbow and Colorpicker.Set then
+                            HasActive = true
+                            local Color = FromHSV(Library.RainbowHue, 1, 1)
+                            pcall(function()
+                                Colorpicker:Set(Color, Colorpicker.Alpha or 0)
+                            end)
+                        end
                     end
-                end
 
-                if HasActive then
-                    task.wait(0.016)
+                    if HasActive then
+                        task.wait(0.016)
+                    else
+                        task.wait(1)
+                    end
                 else
                     task.wait(1)
                 end
-            else
-                task.wait(1)
-            end
+            end)
+            if not Library then break end
+            task.wait(0.016)
         end
     end)
 
@@ -963,19 +968,30 @@ local Library do
             Items["NoButton"]:Tween(nil, {BackgroundColor3 = FromRGB(65, 35, 35)})
         end)
 
-        Items["YesButton"]:Connect("MouseButton1Down", function()
+        local confirmed = false
+        local function handleYes()
+            if confirmed then return end
+            confirmed = true
             closeDialog()
             if OnConfirm then
                 Library:SafeCall(OnConfirm)
             end
-        end)
+        end
 
-        Items["NoButton"]:Connect("MouseButton1Down", function()
+        local cancelled = false
+        local function handleNo()
+            if cancelled then return end
+            cancelled = true
             closeDialog()
             if OnCancel then
                 Library:SafeCall(OnCancel)
             end
-        end)
+        end
+
+        Items["YesButton"]:Connect("MouseButton1Down", handleYes)
+        Items["YesButton"]:Connect("MouseButton1Click", handleYes)
+        Items["NoButton"]:Connect("MouseButton1Down", handleNo)
+        Items["NoButton"]:Connect("MouseButton1Click", handleNo)
 
         for _, desc in Items["Dialog"].Instance:GetDescendants() do
             if desc:IsA("UIStroke") then
@@ -1097,28 +1113,47 @@ local Library do
     Library.Connect = function(self, Event, Callback, Name)
         Name = Name or StringFormat("Connection_%s_%s", self.UnnamedConnections + 1, HttpService:GenerateGUID(false))
 
-        local NewConnection = {
-            Event = Event,
-            Callback = Callback,
+        local Connection = Event:Connect(Callback)
+        local ConnectionTable = {
             Name = Name,
-            Connection = nil
+            Connection = Connection
         }
 
-        Library:Thread(function()
-            NewConnection.Connection = Event:Connect(Callback)
-        end)
+        TableInsert(self.Connections, ConnectionTable)
 
-        TableInsert(self.Connections, NewConnection)
-        return NewConnection
+        return Connection
     end
 
     Library.Disconnect = function(self, Name)
-        for _, Connection in self.Connections do
-            if Connection.Name == Name then
-                Connection.Connection:Disconnect()
+        for Index, Value in self.Connections do
+            if Value.Name == Name then
+                Value.Connection:Disconnect()
+                TableRemove(self.Connections, Index)
                 break
             end
         end
+    end
+
+    Library.GetTransparencyPropertyFromItem = function(self, Item)
+        local TransparencyProps = {
+            ["TextLabel"] = "TextTransparency",
+            ["TextButton"] = "TextTransparency",
+            ["TextBox"] = "TextTransparency",
+            ["ImageLabel"] = "ImageTransparency",
+            ["ImageButton"] = "ImageTransparency",
+            ["Frame"] = "BackgroundTransparency",
+            ["ScrollingFrame"] = {"BackgroundTransparency", "ScrollBarImageTransparency"},
+            ["UIStroke"] = "Transparency",
+            ["CanvasGroup"] = "GroupTransparency"
+        }
+
+        for Class, Prop in TransparencyProps do
+            if Item:IsA(Class) then
+                return Prop
+            end
+        end
+
+        return
     end
 
     Library.NextFlag = function(self)
@@ -1198,15 +1233,25 @@ local Library do
     end
 
     Library.DeleteConfig = function(self, Config)
-        if isfile(Library.Folders.Configs .. "/" .. Config) then
-            delfile(Library.Folders.Configs .. "/" .. Config)
-            Library:Notification("Deleted config " .. Config, 5, Color3.fromRGB(0, 255, 0))
+        local baseName = tostring(Config):gsub("%.json$", "")
+        local p1 = Library.Folders.Configs .. "/" .. baseName .. ".json"
+        local p2 = Library.Folders.Configs .. "/" .. tostring(Config)
+        if isfile(p1) then
+            pcall(function() delfile(p1) end)
+            Library:Notification("Deleted config " .. baseName, 5, Color3.fromRGB(0, 255, 0))
+        elseif isfile(p2) then
+            pcall(function() delfile(p2) end)
+            Library:Notification("Deleted config " .. baseName, 5, Color3.fromRGB(0, 255, 0))
         end
     end
 
     Library.SaveConfig = function(self, Config)
-        writefile(Library.Folders.Configs .. "/" .. Config, Library:GetConfig())
-        Library:Notification("Saved config " .. Config, 5, Color3.fromRGB(0, 255, 0))
+        local baseName = tostring(Config):gsub("%.json$", "")
+        local p1 = Library.Folders.Configs .. "/" .. baseName .. ".json"
+        pcall(function()
+            writefile(p1, Library:GetConfig())
+        end)
+        Library:Notification("Saved config " .. baseName, 5, Color3.fromRGB(0, 255, 0))
     end
 
     Library.RefreshConfigsList = function(self, Element)
@@ -1348,14 +1393,20 @@ local Library do
 
     task.spawn(function()
         while true do
-            local Dt = 0.033
-            local FullRotationTime = Library.Tween.Time * 10
-            local Increment = (Dt / FullRotationTime) * 360
-            for _, GradData in Library.AnimatedGradients do
-                GradData.Angle = (GradData.Angle + Increment) % 360
-                GradData.Gradient.Rotation = GradData.Angle
-            end
-            task.wait(Dt)
+            pcall(function()
+                if not Library or not Library.Tween or not Library.AnimatedGradients then return end
+                local Dt = 0.033
+                local FullRotationTime = (Library.Tween.Time or 0.3) * 10
+                local Increment = (Dt / FullRotationTime) * 360
+                for _, GradData in Library.AnimatedGradients do
+                    if GradData and GradData.Gradient then
+                        GradData.Angle = ((GradData.Angle or 0) + Increment) % 360
+                        GradData.Gradient.Rotation = GradData.Angle
+                    end
+                end
+            end)
+            if not Library then break end
+            task.wait(0.033)
         end
     end)
 
