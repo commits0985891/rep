@@ -693,67 +693,48 @@ local Library do
 
 
         Library.ConfirmDialog = function(self, Title, Message, OnConfirm, OnCancel)
-            local dialogGui = InstanceNew("ScreenGui")
-            dialogGui.Name = "\0"
-            dialogGui.ResetOnSpawn = false
-            dialogGui.DisplayOrder = 999
-            dialogGui.IgnoreGuiInset = true
-            dialogGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-            dialogGui.Parent = gethui()
+            local Items = {}
+            
+            local DialogHolder = Instances:Create("ScreenGui", {
+                Parent = gethui(),
+                Name = "\0",
+                ResetOnSpawn = false,
+                DisplayOrder = 999,
+                ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            })
 
-            local snowParticles = {}
-            local snowRunning = true
-
-            local overlay = InstanceNew("TextButton")
-            overlay.Name = "\0"
-            overlay.Text = ""
-            overlay.AutoButtonColor = false
-            overlay.Size = UDim2New(1, 0, 1, 0)
-            overlay.BackgroundColor3 = FromRGB(0, 0, 0)
-            overlay.BackgroundTransparency = 1
-            overlay.BorderSizePixel = 0
-            overlay.ZIndex = 50000
-            overlay.Parent = dialogGui
-
-            local Items = { }
+            local Overlay = Instances:Create("Frame", {
+                Parent = DialogHolder.Instance,
+                Name = "\0",
+                Size = UDim2New(1, 0, 1, 0),
+                BackgroundColor3 = FromRGB(0, 0, 0),
+                BackgroundTransparency = 0.5,
+                BorderSizePixel = 0,
+                ZIndex = 1
+            })
 
             Items["Dialog"] = Instances:Create("Frame", {
-                Parent = dialogGui,
+                Parent = DialogHolder.Instance,
                 Name = "\0",
                 AnchorPoint = Vector2New(0.5, 0.5),
                 Position = UDim2New(0.5, 0, 0.5, 0),
-                Size = UDim2New(0, 260, 0, 110),
-                BorderColor3 = FromRGB(10, 10, 10),
-                BorderSizePixel = 2,
-                BackgroundColor3 = FromRGB(18, 18, 23),
-                BackgroundTransparency = 1,
-                ZIndex = 50100
-            })  Items["Dialog"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
+                Size = UDim2New(0, 300, 0, 140),
+                BackgroundColor3 = Library.Theme["Background"],
+                BorderSizePixel = 0,
+                ZIndex = 2
+            })
+            Items["Dialog"]:AddToTheme({BackgroundColor3 = "Background"})
 
             Instances:Create("UIStroke", {
                 Parent = Items["Dialog"].Instance,
                 ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0",
-                Color = FromRGB(27, 27, 32),
+                Color = Library.Theme["Outline"],
                 Thickness = 1
             }):AddToTheme({Color = "Outline"})
 
-            Items["AccentLine"] = Instances:Create("Frame", {
+            Instances:Create("UICorner", {
                 Parent = Items["Dialog"].Instance,
-                Name = "\0",
-                Position = UDim2New(0, 0, 0, -1),
-                Size = UDim2New(1, 0, 0, 2),
-                BorderSizePixel = 0,
-                BackgroundColor3 = FromRGB(185, 208, 250),
-                BackgroundTransparency = 1,
-                ZIndex = 50101
-            })
-
-            Instances:Create("UIGradient", {
-                Parent = Items["AccentLine"].Instance,
-                Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(65, 65, 65))}
+                CornerRadius = UDimNew(0, 4)
             })
 
             Items["Title"] = Instances:Create("TextLabel", {
@@ -763,67 +744,100 @@ local Library do
                 Text = Title or "WARNING",
                 Name = "\0",
                 BackgroundTransparency = 1,
-                TextTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Position = UDim2New(0, 8, 0, 6),
-                Size = UDim2New(1, -16, 0, 16),
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Position = UDim2New(0, 10, 0, 10),
+                Size = UDim2New(1, -20, 0, 20),
                 BorderSizePixel = 0,
-                TextSize = 13,
-                ZIndex = 50101,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })
-
-            Instances:Create("UIStroke", {
-                Parent = Items["Title"].Instance,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0"
-            }):AddToTheme({Color = "Text Border"})
-
-            Instances:Create("Frame", {
-                Parent = Items["Dialog"].Instance,
-                Name = "\0",
-                Position = UDim2New(0, 4, 0, 26),
-                Size = UDim2New(1, -8, 0, 1),
-                BorderSizePixel = 0,
-                BackgroundColor3 = FromRGB(40, 40, 45),
-                BackgroundTransparency = 1,
-                ZIndex = 50101
+                TextSize = 14,
+                ZIndex = 3
             })
 
             Items["Message"] = Instances:Create("TextLabel", {
                 Parent = Items["Dialog"].Instance,
                 FontFace = Library.Font,
-                TextColor3 = FromRGB(200, 200, 200),
+                TextColor3 = Library.Theme["Text"],
                 Text = Message or "Are you sure?",
                 Name = "\0",
                 BackgroundTransparency = 1,
-                TextTransparency = 1,
                 TextXAlignment = Enum.TextXAlignment.Center,
+                TextYAlignment = Enum.TextYAlignment.Top,
                 TextWrapped = true,
-                Position = UDim2New(0, 8, 0, 32),
-                Size = UDim2New(1, -16, 0, 36),
+                Position = UDim2New(0, 10, 0, 40),
+                Size = UDim2New(1, -20, 0, 50),
                 BorderSizePixel = 0,
                 TextSize = 12,
-                ZIndex = 50101,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["Message"]:AddToTheme({TextColor3 = "Text"})
-
-            Instances:Create("UIStroke", {
-                Parent = Items["Message"].Instance,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Name = "\0"
-            }):AddToTheme({Color = "Text Border"})
+                ZIndex = 3
+            })
+            Items["Message"]:AddToTheme({TextColor3 = "Text"})
 
             Items["ButtonContainer"] = Instances:Create("Frame", {
                 Parent = Items["Dialog"].Instance,
                 Name = "\0",
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 8, 1, -32),
-                Size = UDim2New(1, -16, 0, 24),
+                Position = UDim2New(0, 10, 1, -40),
+                Size = UDim2New(1, -20, 0, 30),
                 BorderSizePixel = 0,
-                ZIndex = 50101,
-                BackgroundColor3 = FromRGB(18, 18, 23)
+                ZIndex = 3
             })
+
+            local function closeDialog()
+                DialogHolder.Instance:Destroy()
+            end
+
+            Items["YesButton"] = Instances:Create("TextButton", {
+                Parent = Items["ButtonContainer"].Instance,
+                Name = "\0",
+                Text = "YES",
+                FontFace = Library.Font,
+                TextColor3 = FromRGB(200, 200, 200),
+                TextSize = 12,
+                AutoButtonColor = false,
+                Position = UDim2New(0, 0, 0, 0),
+                Size = UDim2New(0.485, 0, 1, 0),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(40, 65, 40),
+                ZIndex = 4
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["YesButton"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Items["YesButton"]:Connect("MouseButton1Click", function()
+                if OnConfirm then
+                    OnConfirm()
+                end
+                closeDialog()
+            end)
+
+            Items["NoButton"] = Instances:Create("TextButton", {
+                Parent = Items["ButtonContainer"].Instance,
+                Name = "\0",
+                Text = "NO",
+                FontFace = Library.Font,
+                TextColor3 = FromRGB(200, 200, 200),
+                TextSize = 12,
+                AutoButtonColor = false,
+                Position = UDim2New(0.515, 0, 0, 0),
+                Size = UDim2New(0.485, 0, 1, 0),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(65, 40, 40),
+                ZIndex = 4
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["NoButton"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Items["NoButton"]:Connect("MouseButton1Click", function()
+                if OnCancel then
+                    OnCancel()
+                end
+                closeDialog()
+            end)
+        end
 
             local function closeDialog()
                 pcall(function()
