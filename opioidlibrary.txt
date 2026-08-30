@@ -87,7 +87,7 @@ local Library do
 
         TextOutlineThickness = 0,
 
-        MenuKeybind = tostring(Enum.KeyCode.LeftAlt),
+        MenuKeybind = tostring(Enum.KeyCode.RightShift),
 
         Tween = {
             Time = 0.3,
@@ -7342,7 +7342,7 @@ local Library do
         MenuKeybindLabel, MenuKeybindExt = MenuKeybindLabel:Keybind({
             Name = "Menu Keybind",
             Mode = "Toggle",
-            Default = Enum.KeyCode.Z,
+            Default = Enum.KeyCode.RightShift,
             Flag = "Settings_MenuKeybind",
             Callback = function()
                 if MenuKeybindExt and MenuKeybindExt.Key then
