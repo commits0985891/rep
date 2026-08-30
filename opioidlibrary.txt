@@ -10348,6 +10348,7 @@ local Library do
             FadeSpeed = Data.FadeSpeed or Data.fadespeed or 0.25,
 
             Pages = { },
+            Sections = { },
             SubPages = { },
             Features = { },
             Elements = { },
@@ -11495,6 +11496,7 @@ local Library do
                 Position = UDim2New(0, 4, 0, 2),
                 BorderSizePixel = 0,
                 TextSize = 12,
+                RichText = true,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Text"]:AddToTheme({TextColor3 = "Text"})
 
