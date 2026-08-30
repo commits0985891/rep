@@ -681,10 +681,38 @@ local Library do
         local ImageData = self.Images[Image]
 
         if not ImageData then
-            return
+            return ""
         end
 
-        return getcustomasset(self.Folders.Assets .. "/" .. ImageData[1])
+        local assetPath = self.Folders.Assets .. "/" .. ImageData[1]
+        if not isfile(assetPath) then
+            pcall(function()
+                if not isfolder(self.Folders.Assets) then
+                    makefolder(self.Folders.Assets)
+                end
+                if isfile("opiods/Assets/" .. ImageData[1]) then
+                    writefile(assetPath, readfile("opiods/Assets/" .. ImageData[1]))
+                else
+                    writefile(assetPath, game:HttpGet(ImageData[2]))
+                end
+            end)
+        end
+
+        if isfile(assetPath) then
+            local ok, asset = pcall(getcustomasset, assetPath)
+            if ok and asset then
+                return asset
+            end
+        end
+
+        if isfile("opiods/Assets/" .. ImageData[1]) then
+            local ok, asset = pcall(getcustomasset, "opiods/Assets/" .. ImageData[1])
+            if ok and asset then
+                return asset
+            end
+        end
+
+        return ImageData[2] or ""
     end
 
     Library.Round = function(self, Number, Float)
@@ -1304,7 +1332,23 @@ local Library do
         end
         Library.Folders[Name] = Path
         if not isfolder(Path) then
-            makefolder(Path)
+            pcall(makefolder, Path)
+        end
+        if Name == "Assets" then
+            for _, ImageData in pairs(Library.Images) do
+                local ImageName = ImageData[1]
+                local ImageLink = ImageData[2]
+                local assetPath = Path .. "/" .. ImageName
+                if not isfile(assetPath) then
+                    pcall(function()
+                        if isfile("opiods/Assets/" .. ImageName) then
+                            writefile(assetPath, readfile("opiods/Assets/" .. ImageName))
+                        else
+                            writefile(assetPath, game:HttpGet(ImageLink))
+                        end
+                    end)
+                end
+            end
         end
     end
 
@@ -10998,9 +11042,9 @@ local Library do
             if customPath then
                 -- If the path starts with / treat it as absolute, otherwise relative to Assets folder
                 if customPath:sub(1, 1) == "/" then
-                    ResolvedIconImage = getcustomasset(customPath)
+                    pcall(function() ResolvedIconImage = getcustomasset(customPath) end)
                 else
-                    ResolvedIconImage = getcustomasset(Library.Folders.Assets .. "/" .. customPath)
+                    pcall(function() ResolvedIconImage = getcustomasset(Library.Folders.Assets .. "/" .. customPath) end)
                 end
             end
         end
