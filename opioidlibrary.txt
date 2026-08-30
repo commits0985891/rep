@@ -484,6 +484,7 @@ local Library do
 
                     if StartPosition.X.Scale ~= 0 or StartPosition.Y.Scale ~= 0 then
                         StartPosition = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y)
+                        Gui.Position = StartPosition
                     end
                 end
             end)
@@ -1817,9 +1818,9 @@ local Library do
             Items["KeybindList"] = Instances:Create("Frame", {
                 Parent = Library.Holder.Instance,
                 BorderColor3 = FromRGB(10, 10, 10),
-                AnchorPoint = Vector2New(0, 0.5),
+                AnchorPoint = Vector2New(0, 0),
                 Name = "\0",
-                Position = UDim2New(0, 15, 0.5, 0),
+                Position = UDim2New(0, 15, 0, 200),
                 Size = UDim2New(0, 180, 0, 0),
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.Y,
@@ -1919,10 +1920,11 @@ local Library do
                 Parent = Items["Inline"].Instance,
                 Name = "\0",
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 5, 0, 19),
+                Position = UDim2New(0, 0, 0, 20),
                 BorderColor3 = FromRGB(0, 0, 0),
                 BorderSizePixel = 0,
-                AutomaticSize = Enum.AutomaticSize.XY,
+                Size = UDim2New(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })
 
@@ -1934,19 +1936,23 @@ local Library do
         end
 
         function KeybindList:Add(Mode, Name, Key)
+            local KeyStr = Key and tostring(Key) or ""
+            local IsBound = KeyStr ~= "" and KeyStr ~= "None" and KeyStr ~= "nil" and KeyStr ~= "Unknown" and KeyStr ~= "Empty"
+
             local NewKey = Instances:Create("TextLabel", {
                 Parent = Items["Content"].Instance,
                 FontFace = Library.Font,
                 TextColor3 = FromRGB(215, 215, 215),
                 BorderColor3 = FromRGB(0, 0, 0),
-                Text = "(" .. Mode .. ") " .. Name .. " - " .. (Key or ""),
+                Text = "(" .. tostring(Mode or "Toggle") .. ") " .. tostring(Name or "Keybind") .. " - " .. (IsBound and KeyStr or "None"),
                 Name = "\0",
-                Size = UDim2New(0, 0, 0, 15),
+                Size = UDim2New(1, 0, 0, 15),
                 BackgroundTransparency = 1,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 BorderSizePixel = 0,
-                AutomaticSize = Enum.AutomaticSize.X,
+                AutomaticSize = Enum.AutomaticSize.Y,
                 TextSize = 12,
+                Visible = IsBound,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  NewKey:AddToTheme({TextColor3 = "Text"})
 
@@ -1956,17 +1962,13 @@ local Library do
                 Name = "\0"
             }):AddToTheme({Color = "Text Border"})
 
-            if not Key or Key == "" or Key == "Unknown" then
-                NewKey.Instance.Visible = false
-            end
-
             function NewKey:Set(Mode, Name, Key)
-                if not Key or Key == "" or Key == "Unknown" then
-                    NewKey.Instance.Visible = false
-                    return
+                local S = Key and tostring(Key) or ""
+                local Bound = S ~= "" and S ~= "None" and S ~= "nil" and S ~= "Unknown" and S ~= "Empty"
+                NewKey.Instance.Visible = Bound
+                if Bound then
+                    NewKey.Instance.Text = "(" .. tostring(Mode or "Toggle") .. ") " .. tostring(Name or "Keybind") .. " - " .. S
                 end
-                NewKey.Instance.Visible = true
-                NewKey.Instance.Text = "(" .. Mode .. ") " .. Name .. " - " .. Key
             end
 
             function NewKey:SetStatus(Status)
