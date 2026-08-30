@@ -75,7 +75,7 @@ local Library do
             ["RiskyText"] = FromRGB(220, 90, 90),
             ["Popup"] = FromRGB(180, 160, 255),
             ["WindowTitle"] = FromRGB(215, 215, 215),
-            ["WindowSubtitle"] = FromRGB(167, 139, 250),
+            ["WindowSubtitle"] = FromRGB(255, 65, 65),
             ["Gradient"] = FromRGB(100, 100, 100),
             ["Text Stroke"] = FromRGB(20, 20, 25)
         },
@@ -96,9 +96,10 @@ local Library do
         },
 
         Folders = {
-            Directory = "opiods",
-            Configs = "opiods/Configs",
-            Assets = "opiods/Assets"
+            Directory = "chudvision.net",
+            Configs = "chudvision.net/Configs",
+            Assets = "chudvision.net/Assets",
+            Songs = "chudvision.net/Songs"
         },
 
         Images = {
@@ -1128,16 +1129,23 @@ local Library do
     end
 
     Library.SafeCall = function(self, Function, ...)
-        local Arguements = { ... }
-        local Success, Result = pcall(Function, TableUnpack(Arguements))
+        local fn = type(self) == "function" and self or Function
+        local Arguements = type(self) == "function" and { Function, ... } or { ... }
+        if type(fn) ~= "function" then
+            return false
+        end
+
+        local Success, Result = pcall(fn, TableUnpack(Arguements))
 
         if not Success then
-            Library:Notification("Error caught in function, report this to the devs:\n"..Result, 5, FromRGB(255, 0, 0))
+            pcall(function()
+                Library:Notification("Error caught in function:\n" .. tostring(Result), 5, FromRGB(255, 0, 0))
+            end)
             warn(Result)
             return false
         end
 
-        return Success
+        return Success, Result
     end
 
     Library.Connect = function(self, Event, Callback, Name)
@@ -1658,6 +1666,9 @@ local Library do
     end
 
     Library.Notification = function(self, Text, Duration, Color, Icon)
+        Text = tostring(Text or "")
+        Duration = tonumber(Duration) or 3
+        Color = typeof(Color) == "Color3" and Color or (Library.Theme and Library.Theme.Accent or FromRGB(235, 157, 255))
         local Items = { } do
             Items["Notification"] = Instances:Create("Frame", {
                 Parent = Library.NotifHolder.Instance,
@@ -1809,6 +1820,7 @@ local Library do
             end)
         end)
     end
+    Library.Notify = Library.Notification
 
     Library.KeybindList = function(self)
         local KeybindList = { }
@@ -10070,7 +10082,9 @@ local Library do
         end
 
         function Keybind:SetVisibility(Bool)
-            Data.Parent.Instance.Visible = Bool
+            if Items and Items["KeyButton"] and Items["KeyButton"].Instance then
+                Items["KeyButton"].Instance.Visible = Bool
+            end
         end
 
         local Debounce = false
@@ -12276,6 +12290,7 @@ local Library do
         function Toggle:SetVisiblity(Bool)
             Items["Toggle"].Instance.Visible = Bool
         end
+        Toggle.SetVisibility = Toggle.SetVisiblity
 
         function Toggle:Colorpicker(Data)
             Data = Data or { }
@@ -12559,6 +12574,7 @@ local Library do
                 function Btn:SetVisiblity(Bool)
                     BtnItems["Button"].Instance.Visible = Bool
                 end
+                Btn.SetVisibility = Btn.SetVisiblity
 
                 BtnItems["Button"]:Connect("MouseButton1Down", function()
                     if Btn.Risky and not Btn.RiskConfirmed then
@@ -12728,6 +12744,7 @@ local Library do
         function Button:SetVisiblity(Bool)
             Items["Button"].Instance.Visible = Bool
         end
+        Button.SetVisibility = Button.SetVisiblity
 
         Items["Button"]:Connect("MouseButton1Down", function()
             if Button.Risky and not Button.RiskConfirmed then
@@ -13516,6 +13533,88 @@ local Library do
         return Colorpicker
     end
 
+    Library.Sections.Keybind = function(self, Data)
+        Data = Data or { }
+
+        local Keybind = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+
+            Name = Data.Name or Data.name or "Keybind",
+            Flag = Data.Flag or Data.flag or Library:NextFlag(),
+            Default = Data.Default ~= nil and Data.Default or Data.default or nil,
+            Mode = Data.Mode or Data.mode or "Toggle",
+            Callback = Data.Callback or Data.callback or function() end,
+            Count = 0
+        }
+
+        local Items = { }
+        Items["Holder"] = Instances:Create("Frame", {
+            Parent = self.Elements["Content"].Instance,
+            BackgroundTransparency = 1,
+            BorderColor3 = FromRGB(0, 0, 0),
+            Size = UDim2New(1, 0, 0, 16),
+            BorderSizePixel = 0,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })
+
+        Items["Label"] = Instances:Create("TextLabel", {
+            Parent = Items["Holder"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(200, 200, 208),
+            Text = Keybind.Name,
+            Name = "\0",
+            Size = UDim2New(1, -50, 1, 0),
+            Position = UDim2New(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Center,
+            BorderSizePixel = 0,
+            TextSize = 12,
+            BackgroundColor3 = FromRGB(255, 255, 255)
+        })
+        Items["Label"]:AddToTheme({ TextColor3 = "Text" })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["Label"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Name = "\0"
+        }):AddToTheme({ Color = "Text Border" })
+
+        Keybind.Parent = Items["Holder"]
+
+        local Extension = Library:CreateKeybind(Keybind)
+
+        if Extension.Items and Extension.Items["KeyButton"] then
+            Extension.Items["KeyButton"].Instance.AnchorPoint = Vector2New(1, 0.5)
+            Extension.Items["KeyButton"].Instance.Position = UDim2New(1, -2, 0.5, 0)
+        end
+
+        function Keybind:Set(Key)
+            Extension:Set(Key)
+        end
+
+        function Keybind:Get()
+            return Extension:Get()
+        end
+
+        function Keybind:SetVisibility(Bool)
+            Items["Holder"].Instance.Visible = Bool
+        end
+        Keybind.SetVisiblity = Keybind.SetVisibility
+
+        self:RegisterFeature({
+            Name = Keybind.Name,
+            Type = "Keybind",
+            Instance = Items["Holder"].Instance,
+            Object = Keybind,
+            Flag = Keybind.Flag
+        })
+
+        return Keybind
+    end
+
     Library.Sections.Label = function(self, Data)
         Data = Data or { }
 
@@ -13664,6 +13763,17 @@ local Library do
 
             return Keybind, Extension
         end
+
+        function Label:Set(Text)
+            Label.Name = tostring(Text or "")
+            Items["Text"].Instance.Text = Label.Name
+        end
+        Label.SetText = Label.Set
+
+        function Label:SetVisibility(Bool)
+            Items["Label"].Instance.Visible = Bool
+        end
+        Label.SetVisiblity = Label.SetVisibility
 
         if Data.Tooltip or Data.tooltip then
             Library:AddTooltip(Items["Label"].Instance, Data.Tooltip or Data.tooltip)
@@ -13992,9 +14102,14 @@ local Library do
             return Listbox.Value
         end
 
+        function Listbox:Select(Option)
+            return Listbox:Set(Option)
+        end
+
         function Listbox:SetVisibility(Bool)
             Items["Listbox"].Instance.Visible = Bool
         end
+        Listbox.SetVisiblity = Listbox.SetVisibility
 
         function Listbox:Remove(Option)
             if Listbox.Options[Option] then
