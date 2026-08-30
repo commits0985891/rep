@@ -9983,10 +9983,10 @@ local Library do
                 AnchorPoint = Vector2New(0, 0),
                 Name = "\0",
                 Position = UDim2New(0, 0, 0, 0),
-                Size = UDim2New(0, 55, 0, 48),
+                Size = UDim2New(0, 65, 0, 52),
                 BorderSizePixel = 2,
                 Visible = false,
-                ZIndex = 50,
+                ZIndex = 80,
                 BackgroundColor3 = FromRGB(15, 15, 20)
             })  Items["Window"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
 
@@ -10001,16 +10001,17 @@ local Library do
             Items["Toggle"] = Instances:Create("TextButton", {
                 Parent = Items["Window"].Instance,
                 FontFace = Library.Font,
-                TextColor3 = FromRGB(235, 157, 255),
+                TextColor3 = FromRGB(215, 215, 215),
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = "Toggle",
                 AutoButtonColor = false,
                 Name = "\0",
                 BorderSizePixel = 0,
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 1, 0, 0),
-                Size = UDim2New(1, 0, 0, 15),
+                Position = UDim2New(0, 0, 0, 2),
+                Size = UDim2New(1, 0, 0, 16),
                 TextSize = 12,
+                ZIndex = 85,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Toggle"]:AddToTheme({TextColor3 = "Text"})
 
@@ -10030,9 +10031,10 @@ local Library do
                 Name = "\0",
                 BorderSizePixel = 0,
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 1, 0, 15),
-                Size = UDim2New(1, 0, 0, 15),
+                Position = UDim2New(0, 0, 0, 18),
+                Size = UDim2New(1, 0, 0, 16),
                 TextSize = 12,
+                ZIndex = 85,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Hold"]:AddToTheme({TextColor3 = "Text"})
 
@@ -10052,9 +10054,10 @@ local Library do
                 Name = "\0",
                 BorderSizePixel = 0,
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 1, 0, 30),
-                Size = UDim2New(1, 0, 0, 15),
+                Position = UDim2New(0, 0, 0, 34),
+                Size = UDim2New(1, 0, 0, 16),
                 TextSize = 12,
+                ZIndex = 85,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Always"]:AddToTheme({TextColor3 = "Text"})
 
@@ -10105,7 +10108,7 @@ local Library do
 
                 local ButtonPos = Items["KeyButton"].Instance.AbsolutePosition
                 local ButtonSize = Items["KeyButton"].Instance.AbsoluteSize
-                local WindowSize = Vector2New(55, 48)
+                local WindowSize = Vector2New(65, 52)
                 local Viewport = Camera.ViewportSize
 
                 local PosX = ButtonPos.X + ButtonSize.X - WindowSize.X
@@ -10122,17 +10125,29 @@ local Library do
                 Items["Window"].Instance.Parent = Library.Holder.Instance
                 Items["Window"].Instance.Position = UDim2New(0, PosX, 0, PosY)
                 Items["Window"].Instance.Size = UDim2New(0, WindowSize.X, 0, WindowSize.Y)
-                Items["Window"].Instance.ZIndex = 50
+                Items["Window"].Instance.ZIndex = 80
                 Items["Window"].Instance.Visible = true
                 Library:BringToFront(Items["Window"].Instance)
                 Items["Window"]:Tween(nil, {BackgroundTransparency = 0})
 
+                for modeName, btn in pairs(Modes) do
+                    btn.Instance.Visible = true
+                    btn.Instance.ZIndex = 85
+                    btn.Instance.TextTransparency = 0
+                    if modeName == Keybind.Mode then
+                        btn.Instance.TextColor3 = Library.Theme.Accent
+                    else
+                        btn.Instance.TextColor3 = Library.Theme.Text
+                    end
+                end
+
                 for Index, Value in ipairs(Items["Window"].Instance:GetDescendants()) do
                     if Value:IsA("UIStroke") then
-                        Tween:Create(Value, nil, {Transparency = 0}, true)
+                        Value.Transparency = 0
                     elseif Value:IsA("TextButton") then
-                        Tween:Create(Value, nil, {TextTransparency = 0}, true)
-                        Value.ZIndex = 51
+                        Value.TextTransparency = 0
+                        Value.ZIndex = 85
+                        Value.Visible = true
                     end
                 end
                 task.delay(0.05, function() Debounce = false end)
@@ -10260,8 +10275,8 @@ local Library do
 
         function Keybind:SetMode(Mode)
             Keybind.Mode = Mode or "Toggle"
-            for Index, Value in Modes do
-                if Index == Mode then
+            for Index, Value in pairs(Modes) do
+                if Index == Keybind.Mode then
                     Value:Tween(nil, {TextColor3 = Library.Theme.Accent})
                     Value:ChangeItemTheme({TextColor3 = "Accent"})
                 else
@@ -10320,6 +10335,7 @@ local Library do
 
             Items["Text"]:Tween(nil, {TextColor3 = Library.Theme.Accent})
             Items["Text"]:ChangeItemTheme({TextColor3 = "Accent"})
+            Items["Text"].Instance.Text = "..."
 
             local InputBegan
             InputBegan = UserInputService.InputBegan:Connect(function(Input)
@@ -10329,38 +10345,37 @@ local Library do
                     else
                         Keybind:Set(Input.KeyCode)
                     end
-                else
-                    Keybind:Set(Input.UserInputType)
+                elseif Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Keybind:Set("MouseButton1")
+                elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    -- Right-click cancels key picking, does not bind right click
+                    Keybind:Set(Keybind.Key or "None")
+                elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
+                    Keybind:Set("MouseButton3")
                 end
 
-                InputBegan:Disconnect()
-                InputBegan = nil
+                if InputBegan then
+                    InputBegan:Disconnect()
+                    InputBegan = nil
+                end
             end)
         end)
 
         local function toggleModeMenu()
+            if Keybind.Picking then return end
             Keybind:SetOpen(not Keybind.IsOpen)
         end
 
-        Items["KeyButton"]:Connect("MouseButton2Down", toggleModeMenu)
         Items["KeyButton"]:Connect("MouseButton2Click", toggleModeMenu)
-        Items["KeyButton"]:Connect("InputBegan", function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                toggleModeMenu()
-            end
-        end)
-        Items["Text"]:Connect("InputBegan", function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                toggleModeMenu()
-            end
-        end)
 
         Library:Connect(UserInputService.InputBegan, function(Input)
-            if Keybind.Key and (tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key) then
-                if Keybind.Mode == "Toggle" then
-                    Keybind:Press()
-                elseif Keybind.Mode == "Hold" then
-                    Keybind:Press(true)
+            if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
+                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
+                    if Keybind.Mode == "Toggle" then
+                        Keybind:Press()
+                    elseif Keybind.Mode == "Hold" then
+                        Keybind:Press(true)
+                    end
                 end
             end
 
@@ -10374,9 +10389,11 @@ local Library do
         end)
 
         Library:Connect(UserInputService.InputEnded, function(Input)
-            if Keybind.Key and (tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key) then
-                if Keybind.Mode == "Hold" then
-                    Keybind:Press(false)
+            if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
+                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
+                    if Keybind.Mode == "Hold" then
+                        Keybind:Press(false)
+                    end
                 end
             end
         end)
@@ -12379,6 +12396,7 @@ local Library do
         function Toggle:Keybind(Data)
             Data = Data or { }
 
+            local userCb = Data.Callback or Data.callback
             local Keybind = {
                 Window = self.Window,
                 Tab = self.Tab,
@@ -12389,7 +12407,12 @@ local Library do
                 Flag = Data.Flag or Data.flag or Library:NextFlag(),
                 Default = Data.Default ~= nil and Data.Default or Data.default or nil,
                 Mode = Data.Mode or Data.mode or "Toggle",
-                Callback = Data.Callback or Data.callback or function() end,
+                Callback = function(Toggled)
+                    Toggle:Set(Toggled)
+                    if userCb then
+                        Library:SafeCall(userCb, Toggled)
+                    end
+                end,
             }
 
             local Extension = Library:CreateKeybind(Keybind)
@@ -12402,6 +12425,8 @@ local Library do
                 Extension.Items["KeyButton"].Instance.LayoutOrder = 999
             end
 
+            setmetatable(Keybind, { __index = Extension })
+
             Toggle.Section:RegisterFeature({
                 Name = Toggle.Name .. " " .. (Data.Name or "Keybind"),
                 Type = "Keybind",
@@ -12411,7 +12436,7 @@ local Library do
                 Flag = Keybind.Flag
             })
 
-            return Keybind, Extension
+            return Extension, Keybind
         end
 
         Items["Toggle"]:Connect("MouseButton1Down", function()
@@ -12982,6 +13007,7 @@ local Library do
         function Slider:SetVisibility(Bool)
             Items["Slider"].Instance.Visible = Bool
         end
+        Slider.SetVisiblity = Slider.SetVisibility
 
         Items["RealSlider"]:Connect("MouseButton1Down", function()
             Slider.Sliding = true
@@ -13787,6 +13813,8 @@ local Library do
                 Extension.Items["KeyButton"].Instance.LayoutOrder = 999
             end
 
+            setmetatable(Keybind, { __index = Extension })
+
             Label.Section:RegisterFeature({
                 Name = Label.Name .. " " .. (Data.Name or "Keybind"),
                 Type = "Keybind",
@@ -13796,7 +13824,7 @@ local Library do
                 Flag = Keybind.Flag
             })
 
-            return Keybind, Extension
+            return Extension, Keybind
         end
 
         function Label:Set(Text)
