@@ -10129,8 +10129,14 @@ local Library do
             Debounce = false
         end
 
+        local function isKeyEmpty(k)
+            if not k then return true end
+            local s = tostring(k)
+            return s == "" or s == "None" or s == "nil" or s == "Unknown" or s == "Empty" or s == "empty" or s == "Backspace" or s == "Escape"
+        end
+
         function Keybind:Set(Key)
-            if not Key or Key == "None" or Key == "nil" or Key == "" or Key == "Unknown" then
+            if isKeyEmpty(Key) then
                 Keybind.Key = nil
                 Keybind.Value = "None"
                 Items["Text"].Instance.Text = "None"
@@ -10139,7 +10145,7 @@ local Library do
                 end
             elseif StringFind(tostring(Key), "Enum") then
                 local KeyName = typeof(Key) == "EnumItem" and Key.Name or StringGSub(tostring(Key), ".*%.", "")
-                if KeyName == "Backspace" or KeyName == "Escape" or KeyName == "Unknown" or KeyName == "None" or KeyName == "nil" or KeyName == "" then
+                if isKeyEmpty(KeyName) then
                     Keybind.Key = nil
                     Keybind.Value = "None"
                     Items["Text"].Instance.Text = "None"
@@ -10147,7 +10153,7 @@ local Library do
                     Keybind.Key = tostring(Key)
                     local KeyString = Keys[KeyName] or Keys[Keybind.Key] or KeyName or "None"
                     local TextToDisplay = StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
-                    if TextToDisplay == "" or TextToDisplay == "nil" then
+                    if isKeyEmpty(TextToDisplay) then
                         TextToDisplay = "None"
                         Keybind.Key = nil
                     end
@@ -10175,13 +10181,13 @@ local Library do
                     Keybind:SetMode("Toggle")
                 end
 
-                if not RealKey or RealKey == "nil" or RealKey == "None" or RealKey == "" or RealKey == "Unknown" or RealKey == "Backspace" or RealKey == "Escape" then
+                if isKeyEmpty(RealKey) then
                     Keybind.Key = nil
                     Keybind.Value = "None"
                     Items["Text"].Instance.Text = "None"
                 else
                     local KeyName = typeof(RealKey) == "EnumItem" and RealKey.Name or StringGSub(tostring(RealKey), ".*%.", "")
-                    if KeyName == "Backspace" or KeyName == "Escape" or KeyName == "Unknown" or KeyName == "None" or KeyName == "nil" or KeyName == "" then
+                    if isKeyEmpty(KeyName) then
                         Keybind.Key = nil
                         Keybind.Value = "None"
                         Items["Text"].Instance.Text = "None"
@@ -10189,7 +10195,7 @@ local Library do
                         Keybind.Key = tostring(RealKey)
                         local KeyString = Keys[KeyName] or Keys[Keybind.Key] or KeyName or "None"
                         local TextToDisplay = StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
-                        if TextToDisplay == "" or TextToDisplay == "nil" then
+                        if isKeyEmpty(TextToDisplay) then
                             TextToDisplay = "None"
                             Keybind.Key = nil
                         end
@@ -10202,7 +10208,7 @@ local Library do
                     Library:SafeCall(Keybind.Callback, Keybind.Toggled)
                 end
             elseif type(Key) == "string" then
-                if Key == "None" or Key == "nil" or Key == "" or Key == "Unknown" or Key == "Backspace" or Key == "Escape" then
+                if isKeyEmpty(Key) then
                     Keybind.Key = nil
                     Keybind.Value = "None"
                     Items["Text"].Instance.Text = "None"
@@ -10210,7 +10216,7 @@ local Library do
                     Keybind.Key = Key
                     local KeyString = Keys[Key] or Key
                     local TextToDisplay = StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
-                    if TextToDisplay == "" or TextToDisplay == "nil" then
+                    if isKeyEmpty(TextToDisplay) then
                         TextToDisplay = "None"
                         Keybind.Key = nil
                     end
