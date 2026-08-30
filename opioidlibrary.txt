@@ -1207,7 +1207,13 @@ local Library do
     end
 
     Library.LoadConfig = function(self, Config)
-        local Decoded = HttpService:JSONDecode(Config)
+        local SuccessDec, Decoded = pcall(function()
+            return HttpService:JSONDecode(Config)
+        end)
+        if not SuccessDec or type(Decoded) ~= "table" then
+            Library:Notification("Invalid config file format", 5, FromRGB(255, 0, 0))
+            return
+        end
 
         local Success, Result = Library:SafeCall(function()
             for Index, Value in Decoded do
@@ -1217,13 +1223,15 @@ local Library do
                     continue
                 end
 
-                if type(Value) == "table" and Value.Key then
-                    SetFunction(Value)
-                elseif type(Value) == "table" and Value.Color then
-                    SetFunction(Value.Color, Value.Alpha)
-                else
-                    SetFunction(Value)
-                end
+                pcall(function()
+                    if type(Value) == "table" and Value.Key then
+                        SetFunction(Value)
+                    elseif type(Value) == "table" and Value.Color then
+                        SetFunction(Value.Color, Value.Alpha)
+                    else
+                        SetFunction(Value)
+                    end
+                end)
             end
         end)
 
@@ -8147,16 +8155,16 @@ local Library do
                     Parent = OptionButton.Instance,
                     Name = "\0",
                     FontFace = Library.Font,
-                    TextColor3 = FromRGB(215, 215, 215),
-                    TextTransparency = 0.48,
-                    Text = Option,
+                    TextColor3 = FromRGB(200, 200, 208),
                     BorderColor3 = FromRGB(0, 0, 0),
-                    Size = UDim2New(1, -5, 1, 0),
-                    Position = UDim2New(0, 5, 0, 0),
+                    Text = Option,
+                    Name = "\0",
+                    Size = UDim2New(1, -6, 1, 0),
+                    Position = UDim2New(0, 6, 0, 0),
+                    TextTransparency = 0.48,
                     BackgroundTransparency = 1,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     BorderSizePixel = 0,
-                    ZIndex = ParentZ + 5,
                     TextSize = 12,
                     BackgroundColor3 = FromRGB(255, 255, 255)
                 })  OptionText:AddToTheme({TextColor3 = "Text"})
@@ -8174,8 +8182,8 @@ local Library do
                     Button = OptionButton
                 }
 
-                function OptionData:Toggle(Status)
-                    if Status == "Active" then
+                function OptionData:Toggle(State)
+                    if State == "Active" then
                         OptionData.Text:ChangeItemTheme({TextColor3 = "Accent"})
                         OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Accent, TextTransparency = 0})
                     else
@@ -8189,64 +8197,54 @@ local Library do
 
                     if Data.Multi then
                         local Index = TableFind(Dropdown.Value, OptionData.Name)
+
                         if Index then
                             TableRemove(Dropdown.Value, Index)
                         else
                             TableInsert(Dropdown.Value, OptionData.Name)
                         end
+
                         OptionData:Toggle(Index and "Inactive" or "Active")
-                        Library.Flags[Dropdown.Flag] = Dropdown.Value
+
                         local TextFormat = #Dropdown.Value > 0 and TableConcat(Dropdown.Value, ", ") or "--"
                         Items["Value"].Instance.Text = TextFormat
                     else
                         if OptionData.Selected then
                             Dropdown.Value = OptionData.Name
-                            Library.Flags[Dropdown.Flag] = OptionData.Name
-                            OptionData.Selected = true
+
                             OptionData:Toggle("Active")
+
                             for Index, Value in Dropdown.Options do
                                 if Value ~= OptionData then
                                     Value.Selected = false
                                     Value:Toggle("Inactive")
                                 end
                             end
+
                             Items["Value"].Instance.Text = OptionData.Name
                         else
                             Dropdown.Value = nil
-                            Library.Flags[Dropdown.Flag] = nil
-                            OptionData.Selected = false
+
                             OptionData:Toggle("Inactive")
                             Items["Value"].Instance.Text = "--"
                         end
                     end
+
+                    Library.Flags[Dropdown.Flag] = Dropdown.Value
 
                     if Data.Callback then
                         Library:SafeCall(Data.Callback, Dropdown.Value)
                     end
                 end
 
-                OptionData.Button:Connect("MouseButton1Down", function()
+                OptionButton:Connect("MouseButton1Down", function()
                     OptionData:Set()
                 end)
 
-                Dropdown.Options[OptionData.Name] = OptionData
+                Dropdown.Options[Option] = OptionData
                 return OptionData
             end
 
-            function Dropdown:Remove(Option)
-                if not Dropdown.Options[Option] then return end
-                Dropdown.Options[Option].Button:Clean()
-                Dropdown.Options[Option] = nil
-            end
-
-            function Dropdown:Refresh(List)
-                for Index, Value in Dropdown.Options do
-                    Dropdown:Remove(Value.Name)
-                end
-                for Index, Value in List do
-                    Dropdown:Add(Value)
-                end
-            end
 
             Items["Open"]:Connect("MouseButton1Down", function()
                 Dropdown:SetOpen(not Dropdown.IsOpen)
@@ -12725,6 +12723,10 @@ local Library do
         end
 
         function Slider:Set(Value)
+            if type(Value) == "table" then
+                Value = Value[1] or Value.Value or Slider.Min
+            end
+            Value = tonumber(Value) or Slider.Min
             Slider.Value = MathClamp(Library:Round(Value, Slider.Decimals), Slider.Min, Slider.Max)
 
             Library.Flags[Slider.Flag] = Slider.Value
@@ -12968,7 +12970,11 @@ local Library do
         function Dropdown:Set(Option)
             if Dropdown.Multi then
                 if type(Option) ~= "table" then
-                    return
+                    if type(Option) == "string" then
+                        Option = { Option }
+                    else
+                        Option = {}
+                    end
                 end
 
                 Dropdown.Value = Option
@@ -12977,7 +12983,7 @@ local Library do
                     local OptionData = Dropdown.Options[Value]
 
                     if not OptionData then
-                        return
+                        continue
                     end
 
                     OptionData.Selected = true
@@ -12986,13 +12992,32 @@ local Library do
 
                 Library.Flags[Dropdown.Flag] = Dropdown.Value
 
-                Items["Value"].Instance.Text = TableConcat(Option, ", ")
-            else
-                if not Dropdown.Options[Option] then
-                    return
+                local displayStrings = {}
+                for _, v in ipairs(Option) do
+                    table.insert(displayStrings, tostring(v))
                 end
+                Items["Value"].Instance.Text = #displayStrings > 0 and TableConcat(displayStrings, ", ") or "--"
+            else
+                if type(Option) == "table" then
+                    Option = Option[1] or Option.Value or Option.Name or ""
+                end
+                Option = tostring(Option or "")
 
                 local OptionData = Dropdown.Options[Option]
+                if not OptionData then
+                    for k, v in pairs(Dropdown.Options) do
+                        if tostring(k):lower() == Option:lower() then
+                            OptionData = v
+                            Option = tostring(k)
+                            break
+                        end
+                    end
+                end
+
+                if not OptionData then
+                    Items["Value"].Instance.Text = Option ~= "" and Option or "--"
+                    return
+                end
 
                 Dropdown.Value = OptionData.Name
 
@@ -13008,7 +13033,7 @@ local Library do
 
                 Library.Flags[Dropdown.Flag] = Dropdown.Value
 
-                Items["Value"].Instance.Text = Option
+                Items["Value"].Instance.Text = tostring(Option)
             end
 
             if Dropdown.Callback then
@@ -13563,17 +13588,17 @@ local Library do
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Inline"]:AddToTheme({TextColor3 = "Text"})
 
-            Instances:Create("UIPadding", {
-                Parent = Items["Inline"].Instance,
-                PaddingBottom = UDimNew(0, 3),
-                PaddingLeft = UDimNew(0, 5)
-            })
-
             Instances:Create("UIStroke", {
                 Parent = Items["Inline"].Instance,
                 LineJoinMode = Enum.LineJoinMode.Miter,
                 Name = "\0"
             }):AddToTheme({Color = "Text Border"})
+
+            Instances:Create("UIPadding", {
+                Parent = Items["Inline"].Instance,
+                PaddingBottom = UDimNew(0, 3),
+                PaddingLeft = UDimNew(0, 5)
+            })
 
             Items["Background"]:OnHover(function()
                 Items["Background"]:Tween(nil, {BackgroundColor3 = Library.Theme["Hovered Element"]})
@@ -13595,6 +13620,10 @@ local Library do
         end
 
         function Textbox:Set(Value)
+            if type(Value) == "table" then
+                Value = Value[1] or Value.Value or ""
+            end
+            Value = tostring(Value or "")
             Textbox.Value = Value
 
             Items["Inline"].Instance.Text = Textbox.Value
@@ -13709,7 +13738,11 @@ local Library do
         function Listbox:Set(Option)
             if Listbox.Multi then
                 if type(Option) ~= "table" then
-                    return
+                    if type(Option) == "string" then
+                        Option = { Option }
+                    else
+                        Option = {}
+                    end
                 end
 
                 Listbox.Value = Option
@@ -13720,18 +13753,32 @@ local Library do
                     local OptionData = Listbox.Options[Value]
 
                     if not OptionData then
-                        return
+                        continue
                     end
 
                     OptionData.Selected = true
                     OptionData:Toggle("Active")
                 end
             else
-                if not Listbox.Options[Option] then
-                    return
+                if type(Option) == "table" then
+                    Option = Option[1] or Option.Value or Option.Name or ""
                 end
+                Option = tostring(Option or "")
 
                 local OptionData = Listbox.Options[Option]
+                if not OptionData then
+                    for k, v in pairs(Listbox.Options) do
+                        if tostring(k):lower() == Option:lower() then
+                            OptionData = v
+                            Option = tostring(k)
+                            break
+                        end
+                    end
+                end
+
+                if not OptionData then
+                    return
+                end
 
                 Listbox.Value = OptionData.Name
 
@@ -13778,6 +13825,7 @@ local Library do
         end
 
         function Listbox:Add(Option)
+            local StrOption = tostring(type(Option) == "table" and (Option[1] or Option.Name or "") or (Option or ""))
             local ParentZ = Items["RealListbox"].Instance.ZIndex
             local OptionButton = Instances:Create("TextButton", {
                 Parent = Items["RealListbox"].Instance,
@@ -13800,7 +13848,7 @@ local Library do
                 FontFace = Library.Font,
                 TextColor3 = FromRGB(215, 215, 215),
                 TextTransparency = 0.48,
-                Text = Option,
+                Text = StrOption,
                 Name = "\0",
                 BorderColor3 = FromRGB(0, 0, 0),
                 Size = UDim2New(1, -5, 1, 0),
@@ -13823,7 +13871,7 @@ local Library do
 
             local OptionData = {
                 Selected = false,
-                Name = Option,
+                Name = StrOption,
                 Text = OptionText,
                 Button = OptionButton
             }
