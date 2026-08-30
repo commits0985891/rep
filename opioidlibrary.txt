@@ -9978,14 +9978,15 @@ local Library do
             })
 
             Items["Window"] = Instances:Create("Frame", {
-                Parent = Data.Parent.Instance,
+                Parent = Library.UnusedHolder and Library.UnusedHolder.Instance or Library.Holder.Instance,
                 BorderColor3 = FromRGB(10, 10, 10),
-                AnchorPoint = Vector2New(1, 0),
+                AnchorPoint = Vector2New(0, 0),
                 Name = "\0",
-                Position = UDim2New(1, 0, 1, 5),
-                Size = UDim2New(0, 50, 0, 48),
+                Position = UDim2New(0, 0, 0, 0),
+                Size = UDim2New(0, 55, 0, 48),
                 BorderSizePixel = 2,
                 Visible = false,
+                ZIndex = 50,
                 BackgroundColor3 = FromRGB(15, 15, 20)
             })  Items["Window"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
 
@@ -10090,43 +10091,58 @@ local Library do
         local Debounce = false
 
         function Keybind:SetOpen(Bool)
+            if Debounce then return end
             Keybind.IsOpen = Bool
 
-            if Bool then
+            if Keybind.IsOpen then
                 Debounce = true
+                for Index, Value in pairs(Library.OpenFrames) do
+                    if Value ~= Keybind and Value.SetOpen then
+                        pcall(function() Value:SetOpen(false) end)
+                    end
+                end
+                Library.OpenFrames[Keybind] = Keybind
+
+                local ButtonPos = Items["KeyButton"].Instance.AbsolutePosition
+                local ButtonSize = Items["KeyButton"].Instance.AbsoluteSize
+                local WindowSize = Vector2New(55, 48)
+                local Viewport = Camera.ViewportSize
+
+                local PosX = ButtonPos.X + ButtonSize.X - WindowSize.X
+                local PosY = ButtonPos.Y + ButtonSize.Y + 4
+
+                if PosX < 0 then PosX = 0 end
+                if PosX + WindowSize.X > Viewport.X then
+                    PosX = Viewport.X - WindowSize.X - 5
+                end
+                if PosY + WindowSize.Y > Viewport.Y then
+                    PosY = ButtonPos.Y - WindowSize.Y - 4
+                end
+
+                Items["Window"].Instance.Parent = Library.Holder.Instance
+                Items["Window"].Instance.Position = UDim2New(0, PosX, 0, PosY)
+                Items["Window"].Instance.Size = UDim2New(0, WindowSize.X, 0, WindowSize.Y)
+                Items["Window"].Instance.ZIndex = 50
                 Items["Window"].Instance.Visible = true
-                Items["Window"].Instance.ZIndex = 16
+                Library:BringToFront(Items["Window"].Instance)
                 Items["Window"]:Tween(nil, {BackgroundTransparency = 0})
 
-                task.wait(0.1)
-
-                for Index, Value in Items["Window"].Instance:GetDescendants() do
+                for Index, Value in ipairs(Items["Window"].Instance:GetDescendants()) do
                     if Value:IsA("UIStroke") then
                         Tween:Create(Value, nil, {Transparency = 0}, true)
                     elseif Value:IsA("TextButton") then
                         Tween:Create(Value, nil, {TextTransparency = 0}, true)
-                        Value.ZIndex = 16
+                        Value.ZIndex = 51
                     end
                 end
+                task.delay(0.05, function() Debounce = false end)
             else
-                for Index, Value in Items["Window"].Instance:GetDescendants() do
-                    if Value:IsA("UIStroke") then
-                        Tween:Create(Value, nil, {Transparency = 1}, true)
-                    elseif Value:IsA("TextButton") then
-                        Tween:Create(Value, nil, {TextTransparency = 1}, true)
-                        Value.ZIndex = 1
-                    end
+                if Library.OpenFrames[Keybind] then
+                    Library.OpenFrames[Keybind] = nil
                 end
-
-                task.wait(0.1)
-
-                Items["Window"]:Tween(nil, {BackgroundTransparency = 1})
-                Items["Window"].Instance.ZIndex = 1
-                task.wait(0.1)
                 Items["Window"].Instance.Visible = false
+                Items["Window"].Instance.Parent = Library.UnusedHolder and Library.UnusedHolder.Instance or Library.Holder.Instance
             end
-
-            Debounce = false
         end
 
         local function isKeyEmpty(k)
@@ -10243,6 +10259,7 @@ local Library do
         end
 
         function Keybind:SetMode(Mode)
+            Keybind.Mode = Mode or "Toggle"
             for Index, Value in Modes do
                 if Index == Mode then
                     Value:Tween(nil, {TextColor3 = Library.Theme.Accent})
@@ -10321,8 +10338,21 @@ local Library do
             end)
         end)
 
-        Items["KeyButton"]:Connect("MouseButton2Down", function()
+        local function toggleModeMenu()
             Keybind:SetOpen(not Keybind.IsOpen)
+        end
+
+        Items["KeyButton"]:Connect("MouseButton2Down", toggleModeMenu)
+        Items["KeyButton"]:Connect("MouseButton2Click", toggleModeMenu)
+        Items["KeyButton"]:Connect("InputBegan", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                toggleModeMenu()
+            end
+        end)
+        Items["Text"]:Connect("InputBegan", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                toggleModeMenu()
+            end
         end)
 
         Library:Connect(UserInputService.InputBegan, function(Input)
@@ -10334,16 +10364,12 @@ local Library do
                 end
             end
 
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                if Library:IsMouseOverFrame(Items["Window"]) then
-                    return
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                if Keybind.IsOpen and not Debounce then
+                    if not Library:IsMouseOverFrame(Items["Window"]) and not Library:IsMouseOverFrame(Items["KeyButton"]) then
+                        Keybind:SetOpen(false)
+                    end
                 end
-
-                if Debounce then
-                    return
-                end
-
-                Keybind:SetOpen(false)
             end
         end)
 
@@ -10358,16 +10384,19 @@ local Library do
         Items["Toggle"]:Connect("MouseButton1Down", function()
             Keybind.Mode = "Toggle"
             Keybind:SetMode("Toggle")
+            Keybind:SetOpen(false)
         end)
 
         Items["Always"]:Connect("MouseButton1Down", function()
             Keybind.Mode = "Always"
             Keybind:SetMode("Always")
+            Keybind:SetOpen(false)
         end)
 
         Items["Hold"]:Connect("MouseButton1Down", function()
             Keybind.Mode = "Hold"
             Keybind:SetMode("Hold")
+            Keybind:SetOpen(false)
         end)
 
         if Data.Default then
