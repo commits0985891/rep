@@ -122,6 +122,7 @@ local Library do
         ThemeItems = { },
 
         SetFlags = { },
+        Defaults = { },
 
         UnnamedConnections = 0,
         UnnamedFlags = 0,
@@ -1243,23 +1244,41 @@ local Library do
             return
         end
 
+        local Unwrapped = { }
+        for Index, Entry in Decoded do
+            if type(Entry) == "table" and Entry.v ~= nil then
+                Unwrapped[Index] = Entry.v
+            else
+                Unwrapped[Index] = Entry
+            end
+        end
+
         local Success, Result = Library:SafeCall(function()
-            for Index, Value in Decoded do
-                local SetFunction = Library.SetFlags[Index]
+            for Flag, SetFunction in Library.SetFlags do
+                local Value = Unwrapped[Flag]
 
-                if not SetFunction then
-                    continue
-                end
-
-                pcall(function()
-                    if type(Value) == "table" and Value.Key then
-                        SetFunction(Value)
-                    elseif type(Value) == "table" and Value.Color then
-                        SetFunction(Value.Color, Value.Alpha)
-                    else
-                        SetFunction(Value)
+                if Value == nil then
+                    local DefaultVal = Library.Defaults and Library.Defaults[Flag]
+                    if DefaultVal ~= nil then
+                        pcall(function()
+                            if type(DefaultVal) == "table" and DefaultVal.Color ~= nil then
+                                SetFunction(DefaultVal.Color, DefaultVal.Alpha)
+                            else
+                                SetFunction(DefaultVal)
+                            end
+                        end)
                     end
-                end)
+                else
+                    pcall(function()
+                        if type(Value) == "table" and Value.Key ~= nil then
+                            SetFunction(Value)
+                        elseif type(Value) == "table" and Value.Color ~= nil then
+                            SetFunction(Value.Color, Value.Alpha)
+                        else
+                            SetFunction(Value)
+                        end
+                    end)
+                end
             end
         end)
 
@@ -8134,11 +8153,18 @@ local Library do
             function Dropdown:SetVisibility(Bool)
                 Items["Dropdown"].Instance.Visible = Bool
             end
-
             function Dropdown:Set(Option)
+                if type(Option) == "table" and Option.v ~= nil then
+                    Option = Option.v
+                end
+
                 if Data.Multi then
                     if type(Option) ~= "table" then
-                        return
+                        if type(Option) == "string" then
+                            Option = { Option }
+                        else
+                            Option = {}
+                        end
                     end
 
                     Dropdown.Value = Option
@@ -8151,11 +8177,33 @@ local Library do
                         OptionData:Toggle("Active")
                     end
 
-                    Items["Value"].Instance.Text = TableConcat(Option, ", ")
+                    local displayStrings = {}
+                    for _, v in ipairs(Option) do
+                        table.insert(displayStrings, tostring(v))
+                    end
+                    Items["Value"].Instance.Text = #displayStrings > 0 and TableConcat(displayStrings, ", ") or "--"
                 else
-                    if not Dropdown.Options[Option] then return end
+                    if type(Option) == "table" then
+                        Option = Option[1] or Option.Value or Option.Name or ""
+                    end
+                    Option = tostring(Option or "")
 
                     local OptionData = Dropdown.Options[Option]
+                    if not OptionData then
+                        for k, v in pairs(Dropdown.Options) do
+                            if tostring(k):lower() == Option:lower() then
+                                OptionData = v
+                                Option = tostring(k)
+                                break
+                            end
+                        end
+                    end
+
+                    if not OptionData then
+                        Items["Value"].Instance.Text = Option ~= "" and Option or "--"
+                        return
+                    end
+
                     Dropdown.Value = Option
                     Library.Flags[Dropdown.Flag] = Option
 
@@ -8169,7 +8217,7 @@ local Library do
                         end
                     end
 
-                    Items["Value"].Instance.Text = Option
+                    Items["Value"].Instance.Text = tostring(Option)
                 end
 
                 if Data.Callback then
@@ -8322,6 +8370,7 @@ local Library do
                 Dropdown:Set(Data.Default)
             end
 
+            Library.Defaults[Dropdown.Flag] = Data.Default
             Library.SetFlags[Dropdown.Flag] = function(Value)
                 Dropdown:Set(Value)
             end
@@ -8370,12 +8419,12 @@ local Library do
 
                 Items["RealSlider"] = Instances:Create("TextButton", {
                     Parent = Items["Slider"].Instance,
-                    Name = "\0",
                     AnchorPoint = Vector2New(0, 1),
+                    Name = "\0",
                     Position = UDim2New(0, 0, 1, 0),
-                    AutoButtonColor = false,
-                    Text = "",
                     BorderColor3 = FromRGB(10, 10, 10),
+                    Text = "",
+                    AutoButtonColor = false,
                     Size = UDim2New(1, 0, 0, 10),
                     BorderSizePixel = 2,
                     BackgroundColor3 = FromRGB(33, 33, 36)
@@ -8443,6 +8492,10 @@ local Library do
             end
 
             function Slider:Set(Value)
+                if type(Value) == "table" then
+                    Value = Value.v ~= nil and Value.v or Value[1] or Value.Value or Data.Min
+                end
+                Value = tonumber(Value) or Data.Default or Data.Min
                 Slider.Value = Library:Round(MathClamp(Value, Data.Min, Data.Max), Data.Decimals)
                 Library.Flags[Slider.Flag] = Slider.Value
 
@@ -8498,6 +8551,7 @@ local Library do
                 Slider:Set(Data.Default)
             end
 
+            Library.Defaults[Slider.Flag] = Data.Default
             Library.SetFlags[Slider.Flag] = function(Value)
                 Slider:Set(Value)
             end
@@ -8661,8 +8715,11 @@ local Library do
             end
 
             function Toggle:Set(Value)
-                Toggle.Value = Value
-                Library.Flags[Toggle.Flag] = Value
+                if type(Value) == "table" and Value.v ~= nil then
+                    Value = Value.v
+                end
+                Toggle.Value = Value and true or false
+                Library.Flags[Toggle.Flag] = Toggle.Value
 
                 if Toggle.Value then
                     Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
@@ -8701,6 +8758,11 @@ local Library do
 
             if Data.Default then
                 Toggle:Set(Data.Default)
+            end
+
+            Library.Defaults[Toggle.Flag] = Data.Default
+            Library.SetFlags[Toggle.Flag] = function(Value)
+                Toggle:Set(Value)
             end
 
             return Toggle, Items
@@ -9812,6 +9874,7 @@ local Library do
 
             Colorpicker.Items = Items
 
+            Library.Defaults[Colorpicker.Flag] = { Color = Data.Default, Alpha = Data.Alpha }
             Library.SetFlags[Colorpicker.Flag] = function(Value, Alpha)
                 Colorpicker:Set(Value, Alpha)
             end
@@ -10297,6 +10360,10 @@ local Library do
             })
         end
 
+        Library.Defaults[Data.Flag] = {
+            Key = Data.Default,
+            Mode = Data.Mode or "Toggle"
+        }
         Library.SetFlags[Data.Flag] = function(Value)
             Keybind:Set(Value)
         end
@@ -12175,10 +12242,13 @@ local Library do
         end
 
         function Toggle:Set(Bool)
+            if type(Bool) == "table" and Bool.v ~= nil then
+                Bool = Bool.v
+            end
             if Bool == nil then
                 Toggle.Value = not Toggle.Value
             else
-                Toggle.Value = Bool
+                Toggle.Value = Bool and true or false
             end
 
             Library.Flags[Toggle.Flag] = Toggle.Value
@@ -12312,6 +12382,7 @@ local Library do
             Toggle:Set(Toggle.Default)
         end
 
+        Library.Defaults[Toggle.Flag] = Toggle.Default
         Library.SetFlags[Toggle.Flag] = function(Value)
             Toggle:Set(Value)
         end
@@ -12829,9 +12900,9 @@ local Library do
 
         function Slider:Set(Value)
             if type(Value) == "table" then
-                Value = Value[1] or Value.Value or Slider.Min
+                Value = Value.v ~= nil and Value.v or Value[1] or Value.Value or Value.val
             end
-            Value = tonumber(Value) or Slider.Min
+            Value = tonumber(Value) or Slider.Default or Slider.Min
             Slider.Value = MathClamp(Library:Round(Value, Slider.Decimals), Slider.Min, Slider.Max)
 
             Library.Flags[Slider.Flag] = Slider.Value
@@ -12889,6 +12960,7 @@ local Library do
             Slider:Set(Slider.Default)
         end
 
+        Library.Defaults[Slider.Flag] = Slider.Default
         Library.SetFlags[Slider.Flag] = function(Value)
             Slider:Set(Value)
         end
@@ -13073,6 +13145,9 @@ local Library do
         end
 
         function Dropdown:Set(Option)
+            if type(Option) == "table" and Option.v ~= nil then
+                Option = Option.v
+            end
             if Dropdown.Multi then
                 if type(Option) ~= "table" then
                     if type(Option) == "string" then
@@ -13339,6 +13414,7 @@ local Library do
             Dropdown:Set(Dropdown.Default)
         end
 
+        Library.Defaults[Dropdown.Flag] = Dropdown.Default
         Library.SetFlags[Dropdown.Flag] = function(Value)
             Dropdown:Set(Value)
         end
@@ -13726,7 +13802,7 @@ local Library do
 
         function Textbox:Set(Value)
             if type(Value) == "table" then
-                Value = Value[1] or Value.Value or ""
+                Value = Value.v ~= nil and Value.v or Value[1] or Value.Value or ""
             end
             Value = tostring(Value or "")
             Textbox.Value = Value
@@ -13758,6 +13834,7 @@ local Library do
             Textbox:Set(Textbox.Default)
         end
 
+        Library.Defaults[Textbox.Flag] = Textbox.Default
         Library.SetFlags[Textbox.Flag] = function(Value)
             Textbox:Set(Value)
         end
@@ -13841,6 +13918,9 @@ local Library do
         end
 
         function Listbox:Set(Option)
+            if type(Option) == "table" and Option.v ~= nil then
+                Option = Option.v
+            end
             if Listbox.Multi then
                 if type(Option) ~= "table" then
                     if type(Option) == "string" then
@@ -14048,6 +14128,7 @@ local Library do
             Listbox:Set(Listbox.Default)
         end
 
+        Library.Defaults[Listbox.Flag] = Listbox.Default
         Library.SetFlags[Listbox.Flag] = function(Value)
             Listbox:Set(Value)
         end
