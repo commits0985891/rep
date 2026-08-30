@@ -1964,7 +1964,7 @@ local Library do
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.Y,
                 TextSize = 12,
-                Visible = IsBound,
+                Visible = false,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  NewKey:AddToTheme({TextColor3 = "Text"})
 
@@ -1977,9 +1977,10 @@ local Library do
             function NewKey:Set(Mode, Name, Key)
                 local S = Key and tostring(Key) or ""
                 local Bound = S ~= "" and S ~= "None" and S ~= "nil" and S ~= "Unknown" and S ~= "Empty"
-                NewKey.Instance.Visible = Bound
                 if Bound then
                     NewKey.Instance.Text = "(" .. tostring(Mode or "Toggle") .. ") " .. tostring(Name or "Keybind") .. " - " .. S
+                else
+                    NewKey.Instance.Visible = false
                 end
             end
 
@@ -10362,7 +10363,8 @@ local Library do
 
         Items["KeyButton"]:Connect("MouseButton2Click", toggleModeMenu)
 
-        Library:Connect(UserInputService.InputBegan, function(Input)
+        Library:Connect(UserInputService.InputBegan, function(Input, Processed)
+            if Processed or UserInputService:GetFocusedTextBox() then return end
             if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
                 if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
                     if Keybind.Mode == "Toggle" then
@@ -10928,7 +10930,8 @@ local Library do
             end
         end)
 
-        Library:Connect(UserInputService.InputBegan, function(Input)
+        Library:Connect(UserInputService.InputBegan, function(Input, Processed)
+            if Processed or UserInputService:GetFocusedTextBox() then return end
             local InputKey = tostring(Input.KeyCode)
             local InputType = tostring(Input.UserInputType)
 
