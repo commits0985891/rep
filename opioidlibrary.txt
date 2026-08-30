@@ -10266,13 +10266,13 @@ local Library do
 
         function Keybind:SetMode(Mode)
             Keybind.Mode = Mode or "Toggle"
-            for Index, Value in pairs(Modes) do
-                if Index == Keybind.Mode then
-                    Value:Tween(nil, {TextColor3 = Library.Theme.Accent})
-                    Value:ChangeItemTheme({TextColor3 = "Accent"})
+            for modeName, lbl in pairs(ModeLabels) do
+                if modeName == Keybind.Mode then
+                    lbl:ChangeItemTheme({TextColor3 = "Accent"})
+                    lbl:Tween(nil, {TextColor3 = Library.Theme.Accent, TextTransparency = 0})
                 else
-                    Value:Tween(nil, {TextColor3 = Library.Theme.Text})
-                    Value:ChangeItemTheme({TextColor3 = "Text"})
+                    lbl:ChangeItemTheme({TextColor3 = "Text"})
+                    lbl:Tween(nil, {TextColor3 = Library.Theme.Text, TextTransparency = 0.48})
                 end
             end
 
