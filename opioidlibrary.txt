@@ -10461,9 +10461,10 @@ local Library do
             Items["Subtitle"] = Instances:Create("TextLabel", {
                 Parent = Items["MainFrame"].Instance,
                 FontFace = Library.Font,
-                TextColor3 = FromRGB(167, 139, 250),
+                TextColor3 = Library.Theme.WindowSubtitle or FromRGB(167, 139, 250),
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Window.Subtitle,
+                RichText = Window.RichText,
                 Name = "\0",
                 Size = UDim2New(0.5, -6, 0, 15),
                 BackgroundTransparency = 1,
