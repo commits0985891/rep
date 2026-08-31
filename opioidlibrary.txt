@@ -7554,34 +7554,56 @@ local Library do
 
         UISettingsSection:Dropdown({
             Name = "Notification Position",
-            Items = { "Top Right", "Top Left", "Bottom Right", "Bottom Left", "Bottom Center" },
-            Default = "Top Right",
+            Items = { "Top Center", "Top Right", "Top Left", "Bottom Right", "Bottom Left", "Bottom Center" },
+            Default = "Top Center",
             Flag = "Settings_NotifPosition",
             Callback = function(Value)
                 if Library.NotifHolder and Library.NotifHolder.Instance then
                     local Inst = Library.NotifHolder.Instance
                     local Layout = Inst:FindFirstChildOfClass("UIListLayout")
 
-                    if Value == "Top Right" then
+                    if Value == "Top Center" then
+                        Inst.Position = UDim2New(0.5, 0, 0, 10)
+                        Inst.AnchorPoint = Vector2New(0.5, 0)
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Top
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                        end
+                    elseif Value == "Top Right" then
                         Inst.Position = UDim2New(1, 0, 0, 0)
                         Inst.AnchorPoint = Vector2New(1, 0)
-                        if Layout then Layout.VerticalAlignment = Enum.VerticalAlignment.Top end
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Top
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+                        end
                     elseif Value == "Top Left" then
                         Inst.Position = UDim2New(0, 0, 0, 0)
                         Inst.AnchorPoint = Vector2New(0, 0)
-                        if Layout then Layout.VerticalAlignment = Enum.VerticalAlignment.Top end
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Top
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+                        end
                     elseif Value == "Bottom Right" then
                         Inst.Position = UDim2New(1, 0, 1, 0)
                         Inst.AnchorPoint = Vector2New(1, 1)
-                        if Layout then Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom end
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+                        end
                     elseif Value == "Bottom Left" then
                         Inst.Position = UDim2New(0, 0, 1, 0)
                         Inst.AnchorPoint = Vector2New(0, 1)
-                        if Layout then Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom end
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+                        end
                     elseif Value == "Bottom Center" then
                         Inst.Position = UDim2New(0.5, 0, 1, -40)
                         Inst.AnchorPoint = Vector2New(0.5, 1)
-                        if Layout then Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom end
+                        if Layout then
+                            Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+                            Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                        end
                     end
                 end
             end
@@ -8292,6 +8314,7 @@ local Library do
                     Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
 
                     RenderStepped = RunService.RenderStepped:Connect(function()
+                        LPH_ATTRIBUTES(VM(NONE))
                         local DropdownPos = Items["RealDropdown"].Instance.AbsolutePosition
                         local DropdownSize = Items["RealDropdown"].Instance.AbsoluteSize
                         local HolderHeight = Items["OptionHolder"].Instance.AbsoluteSize.Y
