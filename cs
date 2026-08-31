@@ -23,7 +23,6 @@ local persistentloops = {};
 local currentactive;
 local equip_pause_ticks = 0;
 
--- Continuously keep clientcframe synchronized to the real HumanoidRootPart when not actively spoofing
 runservice.Heartbeat:Connect(function()
     LPH_ATTRIBUTES(PRESET(FAST))
     if not isspoofing and not writing_internal and primarypart and primarypart.Parent then
