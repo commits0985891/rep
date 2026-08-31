@@ -89,7 +89,7 @@ local Library do
             ["RiskyText"] = FromRGB(220, 90, 90),
             ["Popup"] = FromRGB(180, 160, 255),
             ["WindowTitle"] = FromRGB(215, 215, 215),
-            ["WindowSubtitle"] = FromRGB(185, 208, 250),
+            ["WindowSubtitle"] = FromRGB(255, 65, 65),
             ["Gradient"] = FromRGB(100, 100, 100),
             ["Text Stroke"] = FromRGB(20, 20, 25)
         },
@@ -13513,24 +13513,38 @@ local Library do
                     end
                 end
 
-                Dropdown.Value = Option
-
-                for Index, Value in Option do
-                    local OptionData = Dropdown.Options[Value]
-
-                    if not OptionData then
-                        continue
+                local validValues = {}
+                for _, Value in ipairs(Option) do
+                    local strVal = tostring(Value)
+                    local matchedKey = nil
+                    for k, _ in pairs(Dropdown.Options) do
+                        if tostring(k):lower() == strVal:lower() then
+                            matchedKey = tostring(k)
+                            break
+                        end
                     end
+                    if matchedKey and not TableFind(validValues, matchedKey) then
+                        TableInsert(validValues, matchedKey)
+                    end
+                end
 
-                    OptionData.Selected = true
-                    OptionData:Toggle("Active")
+                Dropdown.Value = validValues
+
+                for key, OptionData in pairs(Dropdown.Options) do
+                    if TableFind(validValues, tostring(key)) then
+                        OptionData.Selected = true
+                        OptionData:Toggle("Active")
+                    else
+                        OptionData.Selected = false
+                        OptionData:Toggle("Inactive")
+                    end
                 end
 
                 Library.Flags[Dropdown.Flag] = Dropdown.Value
 
                 local displayStrings = {}
-                for _, v in ipairs(Option) do
-                    table.insert(displayStrings, tostring(v))
+                for _, v in ipairs(validValues) do
+                    TableInsert(displayStrings, tostring(v))
                 end
                 Items["Value"].Instance.Text = #displayStrings > 0 and TableConcat(displayStrings, ", ") or "--"
             else
