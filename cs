@@ -1,3 +1,22 @@
+if not LPH_OBFUSCATED then
+    if not LPH_ENCSTR then LPH_ENCSTR = function(s) return s end end
+    if not LPH_ENCNUM then LPH_ENCNUM = function(n) return n end end
+    if not LPH_PRECHECK then LPH_PRECHECK = function(f, expected) return f() end end
+    if not LPH_ATTRIBUTES then LPH_ATTRIBUTES = function(...) end end
+    if not VM then VM = function(...) end end
+    if not PRESET then PRESET = function(...) end end
+    if not FAST then FAST = "FAST" end
+    if not NONE then NONE = "NONE" end
+    if not BALANCED then BALANCED = "BALANCED" end
+    if not SECURE then SECURE = "SECURE" end
+    if not OPTIMIZE then OPTIMIZE = function(...) end end
+    if not ERROR_HANDLING then ERROR_HANDLING = function(...) end end
+    if not TRANSFORM then TRANSFORM = function(...) end end
+    if not CONTROL_FLOW then CONTROL_FLOW = function(...) end end
+    if not INLINE then INLINE = function(...) end end
+    if not UNROLL then UNROLL = function(...) end end
+end
+
 if getgenv().library_loaded then
     return;
 end;
@@ -23,6 +42,7 @@ local persistentloops = {};
 local currentactive;
 local equip_pause_ticks = 0;
 
+-- Continuously keep clientcframe synchronized to the real HumanoidRootPart when not actively spoofing
 runservice.Heartbeat:Connect(function()
     LPH_ATTRIBUTES(PRESET(FAST))
     if not isspoofing and not writing_internal and primarypart and primarypart.Parent then
