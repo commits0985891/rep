@@ -1272,8 +1272,8 @@ local Library do
 
         local Success, Result = Library:SafeCall(function()
             for Index, Value in Library.Flags do
-                if type(Value) == "table" and Value.Key then
-                    Config[Index] = {Key = tostring(Value.Key), Mode = Value.Mode}
+                if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
+                    Config[Index] = {Key = Value.Key and tostring(Value.Key) or nil, Mode = Value.Mode or "Toggle"}
                 elseif type(Value) == "table" and Value.Color then
                     local ColorVal = Value.Color
                     local Hex
@@ -1327,7 +1327,7 @@ local Library do
                     end
                 else
                     pcall(function()
-                        if type(Value) == "table" and Value.Key ~= nil then
+                        if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
                             SetFunction(Value)
                         elseif type(Value) == "table" and Value.Color ~= nil then
                             SetFunction(Value.Color, Value.Alpha)
@@ -4902,6 +4902,7 @@ local Library do
         end)
 
         local function UpdateCamera()
+            LPH_ATTRIBUTES(PRESET(FAST))
             local x = math.sin(CamAngle) * CamDist * math.cos(CamPitch)
             local z = math.cos(CamAngle) * CamDist * math.cos(CamPitch)
             local y = 5.5 + math.sin(CamPitch) * CamDist
@@ -5075,6 +5076,7 @@ local Library do
         local DrawingAPI = GetDrawingAPI()
 
         local ProjectPointViewport = function(worldPos, cam, vpWidth, vpHeight)
+            LPH_ATTRIBUTES(PRESET(FAST))
             local rel = cam.CFrame:PointToObjectSpace(worldPos)
             if rel.Z >= -0.1 then
                 return nil, false
@@ -5094,6 +5096,7 @@ local Library do
         end
 
         local ProjectPointScreen = function(worldPos, cam)
+            LPH_ATTRIBUTES(PRESET(FAST))
             local screenPos, onScreen = cam:WorldToViewportPoint(worldPos)
             if not onScreen then
                 return nil, false
@@ -5103,6 +5106,7 @@ local Library do
         end
 
         local GetBoundingBox2D = function(model, cam, vpWidth, vpHeight, useViewport)
+            LPH_ATTRIBUTES(PRESET(FAST))
             local corners = {}
             for _, part in model:GetDescendants() do
                 if part:IsA("BasePart") then
@@ -5271,6 +5275,7 @@ local Library do
         DummyHpFill.Parent = DummyHpBg
 
         local function DrawDummyESP()
+            LPH_ATTRIBUTES(PRESET(FAST))
             if not Items["Window"].Instance.Visible then
                 DummyHolder.Visible = false
                 return
@@ -5442,6 +5447,7 @@ local Library do
         end
 
         local function DrawPlayerESP(player)
+            LPH_ATTRIBUTES(PRESET(FAST))
             if not ESPPreview.Config.Enabled then
                 ClearPlayerOverlay(player)
                 return
@@ -7200,12 +7206,15 @@ local Library do
                 })
                 Label:AddToTheme({TextColor3 = "Text"})
 
-                local RowState = { Selected = false, Label = Label }
+                local RowState = { Selected = false, Label = Label, File = File }
 
                 Btn:Connect("MouseButton1Down", function()
-                    if SelectedEntryLabel and SelectedEntryLabel.Instance then
-                        SelectedEntryLabel.Instance.TextColor3 = Library.Theme.Text
-                        SelectedEntryLabel.Instance.TextTransparency = 0.48
+                    if SelectedEntryLabel and SelectedEntryLabel ~= RowState then
+                        SelectedEntryLabel.Selected = false
+                        if SelectedEntryLabel.Label and SelectedEntryLabel.Label.Instance then
+                            SelectedEntryLabel.Label.Instance.TextColor3 = Library.Theme.Text
+                            SelectedEntryLabel.Label.Instance.TextTransparency = 0.48
+                        end
                     end
 
                     if RowState.Selected then
@@ -7226,9 +7235,12 @@ local Library do
                 end)
 
                 Btn:Connect("MouseButton2Down", function()
-                    if SelectedEntryLabel and SelectedEntryLabel.Instance then
-                        SelectedEntryLabel.Instance.TextColor3 = Library.Theme.Text
-                        SelectedEntryLabel.Instance.TextTransparency = 0.48
+                    if SelectedEntryLabel and SelectedEntryLabel ~= RowState then
+                        SelectedEntryLabel.Selected = false
+                        if SelectedEntryLabel.Label and SelectedEntryLabel.Label.Instance then
+                            SelectedEntryLabel.Label.Instance.TextColor3 = Library.Theme.Text
+                            SelectedEntryLabel.Label.Instance.TextTransparency = 0.48
+                        end
                     end
                     RowState.Selected = true
                     SelectedConfigPath = File.FullPath
@@ -10262,9 +10274,6 @@ local Library do
                 Keybind.Key = nil
                 Keybind.Value = "None"
                 Items["Text"].Instance.Text = "None"
-                if Data.Callback then
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
-                end
             elseif StringFind(tostring(Key), "Enum") then
                 local KeyName = typeof(Key) == "EnumItem" and Key.Name or StringGSub(tostring(Key), ".*%.", "")
                 if isKeyEmpty(KeyName) then
@@ -10282,17 +10291,9 @@ local Library do
                     Keybind.Value = TextToDisplay
                     Items["Text"].Instance.Text = TextToDisplay
                 end
-
-                if Data.Callback then
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
-                end
             elseif TableFind({"Toggle", "Hold", "Always"}, Key) then
                 Keybind.Mode = Key
                 Keybind:SetMode(Key)
-
-                if Data.Callback then
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
-                end
             elseif type(Key) == "table" then
                 local RealKey = Key.Key
                 if Key.Mode then
@@ -10325,10 +10326,6 @@ local Library do
                         Items["Text"].Instance.Text = TextToDisplay
                     end
                 end
-
-                if Keybind.Callback then
-                    Library:SafeCall(Keybind.Callback, Keybind.Toggled)
-                end
             elseif type(Key) == "string" then
                 if isKeyEmpty(Key) then
                     Keybind.Key = nil
@@ -10345,10 +10342,6 @@ local Library do
                     Keybind.Value = TextToDisplay
                     Items["Text"].Instance.Text = TextToDisplay
                 end
-
-                if Data.Callback then
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
-                end
             end
 
             Library.Flags[Data.Flag] = {
@@ -10362,6 +10355,13 @@ local Library do
             Items["Text"]:ChangeItemTheme({TextColor3 = "Text"})
             Items["Text"].Instance.Size = UDim2New(0, Items["Text"].Instance.TextBounds.X, 1, 1)
             Update()
+
+            if Data.Callback then
+                Library:SafeCall(Data.Callback, Keybind.Toggled, Keybind.Key, Keybind.Mode)
+            end
+            if Keybind.Callback and Keybind.Callback ~= Data.Callback then
+                Library:SafeCall(Keybind.Callback, Keybind.Toggled, Keybind.Key, Keybind.Mode)
+            end
         end
 
         function Keybind:SetMode(Mode)
