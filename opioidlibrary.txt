@@ -266,9 +266,17 @@ local Library do
     for _, ImageData in Library.Images do
         local ImageName = ImageData[1]
         local ImageLink = ImageData[2]
+        local imagePath = Library.Folders.Assets .. "/" .. ImageName
 
-        if not isfile(Library.Folders.Assets .. "/" .. ImageName) then
-            writefile(Library.Folders.Assets .. "/" .. ImageName, game:HttpGet(ImageLink))
+        if not isfile(imagePath) then
+            for attempt = 1, 3 do
+                local ok, content = pcall(function() return game:HttpGet(ImageLink) end)
+                if ok and type(content) == "string" and #content > 100 then
+                    pcall(writefile, imagePath, content)
+                    break
+                end
+                task.wait(0.2)
+            end
         end
     end
 
@@ -489,7 +497,7 @@ local Library do
                 NewX = MathClamp(NewX, 0, ViewportX - GuiWidth)
                 NewY = MathClamp(NewY, 0, ViewportY - GuiHeight)
 
-                self:Tween(CachedHoverTweenInfo, {Position = UDim2New(0, NewX, 0, NewY)})
+                Gui.Position = UDim2New(0, NewX, 0, NewY)
             end
 
             self:Connect("InputBegan", function(Input)
@@ -585,7 +593,7 @@ local Library do
                             local maxSz = Maximum or Gui.Parent.AbsoluteSize - Gui.AbsoluteSize
                             local d = Start + UDim2New(0, moveInput.Position.X, 0, moveInput.Position.Y)
                             d = UDim2New(0, math.clamp(d.X.Offset, Minimum.X, maxSz.X), 0, math.clamp(d.Y.Offset, Minimum.Y, maxSz.Y))
-                            Tween:Create(Gui, CachedHoverTweenInfo, {Size = d}, true)
+                            Gui.Size = d
                         end
                     end)
 
@@ -630,40 +638,130 @@ local Library do
     end
 
     local CustomFont = { } do
+        local function downloadWithRetries(url, maxRetries)
+            maxRetries = maxRetries or 6
+            for attempt = 1, maxRetries do
+                local ok, result = pcall(function()
+                    return game:HttpGet(url)
+                end)
+                if ok and type(result) == "string" and #result > 1000 then
+                    return result
+                end
+                task.wait(0.35 * attempt)
+            end
+            return nil
+        end
+
+        local function safeCustomAsset(path)
+            local ok, asset = pcall(function()
+                return getcustomasset(path)
+            end)
+            if ok and asset then
+                return asset
+            end
+            return nil
+        end
+
         function CustomFont:New(Name, Weight, Style, Data)
-            if isfile(Library.Folders.Assets .. "/" .. Name .. ".json") then
-                return Font.new(getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".json"))
+            local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
+            local ttfPath = Library.Folders.Assets .. "/" .. Name .. ".ttf"
+
+            -- 1. Check if valid existing JSON and TTF are already cached
+            if isfile(jsonPath) and isfile(ttfPath) then
+                local isValid = false
+                pcall(function()
+                    local ttfContent = readfile(ttfPath)
+                    local jsonContent = readfile(jsonPath)
+                    if #ttfContent > 5000 and #jsonContent > 10 then
+                        isValid = true
+                    end
+                end)
+                if isValid then
+                    local asset = safeCustomAsset(jsonPath)
+                    if asset then
+                        local ok, font = pcall(function() return Font.new(asset) end)
+                        if ok and font then return font end
+                    end
+                else
+                    -- Corrupted cache: remove bad files and re-download
+                    pcall(delfile, jsonPath)
+                    pcall(delfile, ttfPath)
+                end
             end
 
-            if not isfile(Library.Folders.Assets .. "/" .. Name .. ".ttf") then
-                writefile(Library.Folders.Assets .. "/" .. Name .. ".ttf", game:HttpGet(Data.Url))
+            -- 2. Download TTF with retries if missing or corrupted
+            local ttfData = nil
+            if isfile(ttfPath) then
+                pcall(function()
+                    local content = readfile(ttfPath)
+                    if #content > 5000 then ttfData = content end
+                end)
             end
 
-            local FontData = {
-                name = Name,
-                faces = { {
-                    name = "Regular",
-                    weight = Weight,
-                    style = Style,
-                    assetId = getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".ttf")
-                } }
-            }
+            if not ttfData and Data and Data.Url then
+                ttfData = downloadWithRetries(Data.Url, 6)
+                if not ttfData and Data.FallbackUrl then
+                    ttfData = downloadWithRetries(Data.FallbackUrl, 4)
+                end
+                if ttfData then
+                    pcall(function() writefile(ttfPath, ttfData) end)
+                end
+            end
 
-            writefile(Library.Folders.Assets .. "/" .. Name .. ".json", HttpService:JSONEncode(FontData))
-            return Font.new(getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".json"))
+            -- 3. Generate JSON and load custom Font Face
+            if isfile(ttfPath) then
+                local ttfAsset = safeCustomAsset(ttfPath)
+                if ttfAsset then
+                    local FontData = {
+                        name = Name,
+                        faces = { {
+                            name = "Regular",
+                            weight = Weight or 200,
+                            style = Style or "Regular",
+                            assetId = ttfAsset
+                        } }
+                    }
+
+                    pcall(function()
+                        writefile(jsonPath, HttpService:JSONEncode(FontData))
+                    end)
+
+                    if isfile(jsonPath) then
+                        local jsonAsset = safeCustomAsset(jsonPath)
+                        if jsonAsset then
+                            local ok, font = pcall(function() return Font.new(jsonAsset) end)
+                            if ok and font then
+                                return font
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- 4. Clean Fallback font if network/filesystem fails
+            return Font.fromEnum(Enum.Font.GothamMedium)
         end
 
         function CustomFont:Get(Name)
-            if isfile(Library.Folders.Assets .. "/" .. Name .. ".json") then
-                return Font.new(getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".json"))
+            local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
+            if isfile(jsonPath) then
+                local asset = safeCustomAsset(jsonPath)
+                if asset then
+                    local ok, font = pcall(function() return Font.new(asset) end)
+                    if ok and font then
+                        return font
+                    end
+                end
             end
+            return Font.fromEnum(Enum.Font.GothamMedium)
         end
 
         CustomFont:New("Windows-XP-Tahoma", 200, "Regular", {
-            Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"
+            Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf",
+            FallbackUrl = "https://raw.githubusercontent.com/sametexe001/luas/main/fonts/windows-xp-tahoma.ttf"
         })
 
-        Library.Font = CustomFont:Get("Windows-XP-Tahoma")
+        Library.Font = CustomFont:Get("Windows-XP-Tahoma") or Font.fromEnum(Enum.Font.GothamMedium)
     end
 
     Library.Holder = Instances:Create("ScreenGui", {
