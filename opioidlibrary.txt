@@ -782,7 +782,7 @@ local Library do
         BorderColor3 = FromRGB(0, 0, 0),
         AnchorPoint = Vector2New(0.5, 0),
         BackgroundTransparency = 1,
-        Position = UDim2New(0.5, 0, 0, 0),
+        Position = UDim2New(0.5, 0, 0, 10),
         Name = "\0",
         Size = UDim2New(0.34, 0, 1, -14),
         BorderSizePixel = 0,
@@ -1385,6 +1385,7 @@ local Library do
                     Config[Index] = Value
                 end
             end
+            Config["Settings_NotifPosition"] = nil
         end)
 
         return HttpService:JSONEncode(Config)
@@ -1407,6 +1408,7 @@ local Library do
                 Unwrapped[Index] = Entry
             end
         end
+        Unwrapped["Settings_NotifPosition"] = nil
 
         local Success, Result = Library:SafeCall(function()
             for Flag, SetFunction in Library.SetFlags do
@@ -1835,7 +1837,10 @@ local Library do
             isAvatar = true
         end
 
-        local notifHeight = isAvatar and 34 or 22
+        local lines = string.split(Text, "\n")
+        local lineCount = #lines
+        local extraH = (lineCount > 1) and ((lineCount - 1) * 15) or 0
+        local notifHeight = (isAvatar and 34 or 22) + extraH
 
         local Items = { } do
             Items["Notification"] = Instances:Create("Frame", {
@@ -1870,13 +1875,14 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
-                Size = isAvatar and UDim2New(1, -32, 0, 16) or UDim2New(1, 0, 0, 15),
+                Size = isAvatar and UDim2New(1, -32, 0, 16 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
                 BackgroundTransparency = 1,
-                Position = isAvatar and UDim2New(0, 32, 0.5, 0) or UDim2New(0, 13, 0, 2),
-                AnchorPoint = isAvatar and Vector2New(0, 0.5) or Vector2New(0, 0),
+                Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0.5, 0) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
+                AnchorPoint = (isAvatar and lineCount <= 1) and Vector2New(0, 0.5) or Vector2New(0, 0),
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.X,
                 TextSize = isAvatar and 13 or 12,
+                TextYAlignment = (lineCount > 1) and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
@@ -13676,6 +13682,7 @@ local Library do
                         end
                     else
                         Dropdown.Value = nil
+                        Library.Flags[Dropdown.Flag] = nil
 
                         OptionData:Toggle("Inactive")
                         Items["Value"].Instance.Text = "--"
