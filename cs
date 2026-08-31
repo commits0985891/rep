@@ -22,11 +22,19 @@ local registeredspoofs = {};
 local persistentloops = {};
 local currentactive;
 local equip_pause_ticks = 0;
+
+-- Continuously keep clientcframe synchronized to the real HumanoidRootPart when not actively spoofing
+runservice.Heartbeat:Connect(function()
+    if not isspoofing and not writing_internal and primarypart and primarypart.Parent then
+        clientcframe = primarypart.CFrame;
+    end;
+end);
+
 local function protect_equips(char)
     local function onDescendantAdded(desc)
         if desc:IsA("Weld") and desc.Name == "RightGrip" then
             equip_pause_ticks = 3;
-            if primarypart and clientcframe then
+            if isspoofing and primarypart and clientcframe then
                 primarypart.CFrame = clientcframe;
             end;
         end;
@@ -34,7 +42,7 @@ local function protect_equips(char)
     local function onChildAdded(child)
         if child:IsA("Tool") then
             equip_pause_ticks = 3;
-            if primarypart and clientcframe then
+            if isspoofing and primarypart and clientcframe then
                 primarypart.CFrame = clientcframe;
             end;
         end;
@@ -42,18 +50,25 @@ local function protect_equips(char)
     char.DescendantAdded:Connect(onDescendantAdded);
     char.ChildAdded:Connect(onChildAdded);
     for _, desc in ipairs(char:GetDescendants()) do
-        onDescendantAdded(desc);
+        if desc:IsA("Weld") and desc.Name == "RightGrip" then
+            if isspoofing and primarypart and clientcframe then
+                primarypart.CFrame = clientcframe;
+            end;
+        end;
     end;
 end;
+
 local function oncharacter(char)
     primarypart = char:WaitForChild("HumanoidRootPart");
     clientcframe = primarypart.CFrame;
     protect_equips(char);
 end;
+
 if localplayer.Character then
     oncharacter(localplayer.Character);
 end;
 localplayer.CharacterAdded:Connect(oncharacter);
+
 local mt = getrawmetatable(game);
 local originalindex = mt.__index;
 local originalnewindex = mt.__newindex;
@@ -92,11 +107,13 @@ if not hooked then
     setreadonly(mt, true);
     hooked = true;
 end;
+
 local looptypes = {
     heartbeat = runservice.Heartbeat,
     renderstepped = runservice.RenderStepped,
     stepped = runservice.Stepped
 };
+
 local function evaluatecurrent()
     local best;
     for _, v in ipairs(activespoofs) do
@@ -112,6 +129,7 @@ local function evaluatecurrent()
     end;
     currentactive = best;
 end;
+
 local function refreshconnection()
     if not currentactive then
         if connection then
@@ -188,6 +206,7 @@ local function refreshconnection()
         executing = false;
     end);
 end;
+
 getgenv().serverposition = function(looptype, logicname, targetlogic, priority)
     if typeofcache(logicname) ~= "string" then
         warn("invalid logic name");
@@ -218,6 +237,7 @@ getgenv().serverposition = function(looptype, logicname, targetlogic, priority)
         name = logicname
     };
 end;
+
 getgenv().setrunning = function(logicname, booleanref, persistent)
     local spoofdata = registeredspoofs[logicname];
     if not spoofdata then
@@ -284,6 +304,7 @@ getgenv().setrunning = function(logicname, booleanref, persistent)
         end;
     end;
 end;
+
 getgenv().getrunning = function(logicname)
     if not registeredspoofs[logicname] then
         return false;
@@ -295,6 +316,7 @@ getgenv().getrunning = function(logicname)
     end;
     return false;
 end;
+
 getgenv().resetcframe = function()
     stopspoofing = true;
     isspoofing = false;
@@ -321,6 +343,7 @@ getgenv().resetcframe = function()
     end;
     stopspoofing = false;
 end;
+
 getgenv().clearspoofs = function()
     for _, v in pairs(persistentloops) do
         if v.connection then
@@ -337,6 +360,7 @@ getgenv().clearspoofs = function()
         currentlooptype = nil;
     end;
 end;
+
 getgenv().servercallback = function(callback)
     if typeofcache(callback) == "function" then
         cframecallback = callback;
