@@ -25,13 +25,16 @@ local equip_pause_ticks = 0;
 
 -- Continuously keep clientcframe synchronized to the real HumanoidRootPart when not actively spoofing
 runservice.Heartbeat:Connect(function()
+    LPH_ATTRIBUTES(PRESET(FAST))
     if not isspoofing and not writing_internal and primarypart and primarypart.Parent then
         clientcframe = primarypart.CFrame;
     end;
 end);
 
 local function protect_equips(char)
+    LPH_ATTRIBUTES(PRESET(FAST))
     local function onDescendantAdded(desc)
+        LPH_ATTRIBUTES(PRESET(FAST))
         if desc:IsA("Weld") and desc.Name == "RightGrip" then
             equip_pause_ticks = 3;
             if isspoofing and primarypart and clientcframe then
@@ -40,6 +43,7 @@ local function protect_equips(char)
         end;
     end;
     local function onChildAdded(child)
+        LPH_ATTRIBUTES(PRESET(FAST))
         if child:IsA("Tool") then
             equip_pause_ticks = 3;
             if isspoofing and primarypart and clientcframe then
@@ -59,6 +63,7 @@ local function protect_equips(char)
 end;
 
 local function oncharacter(char)
+    LPH_ATTRIBUTES(PRESET(FAST))
     primarypart = char:WaitForChild("HumanoidRootPart");
     clientcframe = primarypart.CFrame;
     protect_equips(char);
@@ -76,6 +81,7 @@ local hooked = false;
 if not hooked then
     setreadonly(mt, false);
     mt.__index = newcclosure(function(self, property)
+        LPH_ATTRIBUTES(PRESET(FAST))
         if (not checkcaller() and self == primarypart and isspoofing) then
             if property == "CFrame" then
                 return clientcframe;
@@ -91,6 +97,7 @@ if not hooked then
         return originalindex(self, property);
     end);
     mt.__newindex = newcclosure(function(self, property, value)
+        LPH_ATTRIBUTES(PRESET(FAST))
         if (self == primarypart and isspoofing and not writing_internal) then
             if property == "CFrame" then
                 clientcframe = value;
@@ -115,6 +122,7 @@ local looptypes = {
 };
 
 local function evaluatecurrent()
+    LPH_ATTRIBUTES(PRESET(FAST))
     local best;
     for _, v in ipairs(activespoofs) do
         if not best then
@@ -130,7 +138,66 @@ local function evaluatecurrent()
     currentactive = best;
 end;
 
+local function handle_spoof_tick()
+    LPH_ATTRIBUTES(PRESET(FAST))
+    if stopspoofing or executing then
+        return;
+    end;
+    if not (primarypart and primarypart.Parent) then
+        return;
+    end;
+    if equip_pause_ticks > 0 then
+        equip_pause_ticks = equip_pause_ticks - 1;
+        clientcframe = primarypart.CFrame;
+        return;
+    end;
+    local spoof = currentactive;
+    if not spoof then
+        return;
+    end;
+    executing = true;
+    clientcframe = primarypart.CFrame;
+    local success, target, restore = pcall(spoof.callback, clientcframe);
+    if success and target and typeofcache(target) == "CFrame" then
+        local savedVel = primarypart.AssemblyLinearVelocity;
+        local savedRotVel = primarypart.AssemblyAngularVelocity;
+        isspoofing = true;
+        writing_internal = true;
+        primarypart.CFrame = target;
+        writing_internal = false;
+        renderstepped:Wait();
+        local restore_target = clientcframe
+        if restore then
+            if typeofcache(restore) == "function" then
+                local ok, res = pcall(restore)
+                if ok and typeofcache(res) == "CFrame" then
+                    restore_target = res
+                end
+            elseif typeofcache(restore) == "CFrame" then
+                restore_target = restore
+            end
+        end
+        writing_internal = true;
+        primarypart.CFrame = restore_target;
+        if savedVel.Magnitude > 0.01 then
+            primarypart.AssemblyLinearVelocity = savedVel;
+        else
+            primarypart.AssemblyLinearVelocity = Vector3.new(0, 0.001, 0);
+        end;
+        primarypart.AssemblyAngularVelocity = savedRotVel;
+        writing_internal = false;
+        isspoofing = false;
+        if cframecallback then
+            cframecallback(target);
+        end;
+    elseif not success then
+        warn("callback error [" .. spoof.name .. "]: " .. tostring(target));
+    end;
+    executing = false;
+end;
+
 local function refreshconnection()
+    LPH_ATTRIBUTES(PRESET(FAST))
     if not currentactive then
         if connection then
             connection:Disconnect();
@@ -148,66 +215,23 @@ local function refreshconnection()
         connection = nil;
     end;
     currentlooptype = looptype;
-    local event = looptypes[looptype] or runservice.Heartbeat;
-    connection = event:Connect(function()
-        if stopspoofing or executing then
-            return;
-        end;
-        if not (primarypart and primarypart.Parent) then
-            return;
-        end;
-        if equip_pause_ticks > 0 then
-            equip_pause_ticks = equip_pause_ticks - 1;
-            clientcframe = primarypart.CFrame;
-            return;
-        end;
-        local spoof = currentactive;
-        if not spoof then
-            return;
-        end;
-        executing = true;
-        clientcframe = primarypart.CFrame;
-        local success, target, restore = pcall(spoof.callback, clientcframe);
-        if success and target and typeofcache(target) == "CFrame" then
-            local savedVel = primarypart.AssemblyLinearVelocity;
-            local savedRotVel = primarypart.AssemblyAngularVelocity;
-            isspoofing = true;
-            writing_internal = true;
-            primarypart.CFrame = target;
-            writing_internal = false;
-            renderstepped:Wait();
-            local restore_target = clientcframe
-            if restore then
-                if typeofcache(restore) == "function" then
-                    local ok, res = pcall(restore)
-                    if ok and typeofcache(res) == "CFrame" then
-                        restore_target = res
-                    end
-                elseif typeofcache(restore) == "CFrame" then
-                    restore_target = restore
-                end
-            end
-            writing_internal = true;
-            primarypart.CFrame = restore_target;
-            if savedVel.Magnitude > 0.01 then
-                primarypart.AssemblyLinearVelocity = savedVel;
-            else
-                primarypart.AssemblyLinearVelocity = Vector3.new(0, 0.001, 0);
-            end;
-            primarypart.AssemblyAngularVelocity = savedRotVel;
-            writing_internal = false;
-            isspoofing = false;
-            if cframecallback then
-                cframecallback(target);
-            end;
-        elseif not success then
-            warn("callback error [" .. spoof.name .. "]: " .. tostring(target));
-        end;
-        executing = false;
-    end);
+    
+    if looptype == "renderstepped" then
+        connection = runservice.RenderStepped:Connect(function()
+            LPH_ATTRIBUTES(VM(NONE))
+            handle_spoof_tick();
+        end);
+    else
+        local event = looptypes[looptype] or runservice.Heartbeat;
+        connection = event:Connect(function()
+            LPH_ATTRIBUTES(PRESET(FAST))
+            handle_spoof_tick();
+        end);
+    end;
 end;
 
 getgenv().serverposition = function(looptype, logicname, targetlogic, priority)
+    LPH_ATTRIBUTES(PRESET(FAST))
     if typeofcache(logicname) ~= "string" then
         warn("invalid logic name");
         return;
@@ -239,12 +263,14 @@ getgenv().serverposition = function(looptype, logicname, targetlogic, priority)
 end;
 
 getgenv().setrunning = function(logicname, booleanref, persistent)
+    LPH_ATTRIBUTES(PRESET(FAST))
     local spoofdata = registeredspoofs[logicname];
     if not spoofdata then
         warn("invalid name: " .. tostring(logicname));
         return;
     end;
     local function applystatus(s)
+        LPH_ATTRIBUTES(PRESET(FAST))
         local status = s;
         if typeofcache(s) == "function" then
             status = s();
@@ -288,6 +314,7 @@ getgenv().setrunning = function(logicname, booleanref, persistent)
         persistentloops[logicname].getter = booleanref;
         if not persistentloops[logicname].connection then
             persistentloops[logicname].connection = runservice.Heartbeat:Connect(function()
+                LPH_ATTRIBUTES(PRESET(FAST))
                 local loop = persistentloops[logicname];
                 if not loop.paused then
                     local desired;
@@ -306,6 +333,7 @@ getgenv().setrunning = function(logicname, booleanref, persistent)
 end;
 
 getgenv().getrunning = function(logicname)
+    LPH_ATTRIBUTES(PRESET(FAST))
     if not registeredspoofs[logicname] then
         return false;
     end;
@@ -318,6 +346,7 @@ getgenv().getrunning = function(logicname)
 end;
 
 getgenv().resetcframe = function()
+    LPH_ATTRIBUTES(PRESET(FAST))
     stopspoofing = true;
     isspoofing = false;
     executing = false;
@@ -345,6 +374,7 @@ getgenv().resetcframe = function()
 end;
 
 getgenv().clearspoofs = function()
+    LPH_ATTRIBUTES(PRESET(FAST))
     for _, v in pairs(persistentloops) do
         if v.connection then
             v.connection:Disconnect();
@@ -362,6 +392,7 @@ getgenv().clearspoofs = function()
 end;
 
 getgenv().servercallback = function(callback)
+    LPH_ATTRIBUTES(PRESET(FAST))
     if typeofcache(callback) == "function" then
         cframecallback = callback;
     end;
