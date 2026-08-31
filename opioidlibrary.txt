@@ -1819,15 +1819,29 @@ local Library do
         return Watermark
     end
 
-    Library.Notification = function(self, Text, Duration, Color, Icon)
+    Library.Notification = function(self, Text, Duration, Color, Icon, AvatarUserId)
         Text = tostring(Text or "")
         Duration = tonumber(Duration) or 3
         Color = typeof(Color) == "Color3" and Color or (Library.Theme and Library.Theme.Accent or FromRGB(235, 157, 255))
+        
+        local isAvatar = false
+        local avatarId = AvatarUserId
+        if not avatarId and typeof(Icon) == "table" and (Icon.Avatar or Icon.UserId) then
+            avatarId = Icon.Avatar or Icon.UserId
+        elseif not avatarId and typeof(Icon) == "number" then
+            avatarId = Icon
+        end
+        if avatarId then
+            isAvatar = true
+        end
+
+        local notifHeight = isAvatar and 34 or 22
+
         local Items = { } do
             Items["Notification"] = Instances:Create("Frame", {
                 Parent = Library.NotifHolder.Instance,
                 Name = "\0",
-                Size = UDim2New(0, 0, 0, 22),
+                Size = UDim2New(0, 0, 0, notifHeight),
                 BorderColor3 = FromRGB(10, 10, 10),
                 BorderSizePixel = 2,
                 AutomaticSize = Enum.AutomaticSize.X,
@@ -1844,9 +1858,9 @@ local Library do
 
             Instances:Create("UIPadding", {
                 Parent = Items["Notification"].Instance,
-                PaddingTop = UDimNew(0, 1),
-                PaddingRight = UDimNew(0, 8),
-                PaddingLeft = UDimNew(0, 5)
+                PaddingTop = UDimNew(0, isAvatar and 2 or 1),
+                PaddingRight = UDimNew(0, isAvatar and 10 or 8),
+                PaddingLeft = UDimNew(0, isAvatar and 6 or 5)
             })
 
             Items["Title"] = Instances:Create("TextLabel", {
@@ -1856,12 +1870,13 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
-                Size = UDim2New(1, 0, 0, 15),
+                Size = isAvatar and UDim2New(1, -32, 0, 16) or UDim2New(1, 0, 0, 15),
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 13, 0, 2),
+                Position = isAvatar and UDim2New(0, 32, 0.5, 0) or UDim2New(0, 13, 0, 2),
+                AnchorPoint = isAvatar and Vector2New(0, 0.5) or Vector2New(0, 0),
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.X,
-                TextSize = 12,
+                TextSize = isAvatar and 13 or 12,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
@@ -1894,26 +1909,54 @@ local Library do
                 })
             })
 
-            Items["Icon"] = Instances:Create("ImageLabel", {
-                Parent = Items["Notification"].Instance,
-                ImageColor3 = FromRGB(255, 255, 255),
-                ScaleType = Enum.ScaleType.Fit,
-                BorderColor3 = FromRGB(0, 0, 0),
-                Name = "\0",
-                Image = "rbxassetid://94324346713012",
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, -2, 0, 3),
-                Size = UDim2New(0, 13, 0, 13),
-                BorderSizePixel = 0,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })
+            if isAvatar then
+                Items["Avatar"] = Instances:Create("ImageLabel", {
+                    Parent = Items["Notification"].Instance,
+                    ImageColor3 = FromRGB(255, 255, 255),
+                    ScaleType = Enum.ScaleType.Fit,
+                    BorderColor3 = FromRGB(0, 0, 0),
+                    Name = "\0",
+                    Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(avatarId) .. "&w=150&h=150",
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 0, 0.5, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Size = UDim2New(0, 24, 0, 24),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(25, 25, 30)
+                })
 
-            if not Icon then
-                Items["Icon"]:Clean()
-                Items["Title"].Instance.Position = UDim2New(0, 1, 0, 2)
+                Instances:Create("UICorner", {
+                    Parent = Items["Avatar"].Instance,
+                    CornerRadius = UDimNew(0, 4)
+                })
+
+                Instances:Create("UIStroke", {
+                    Parent = Items["Avatar"].Instance,
+                    Color = FromRGB(45, 45, 55),
+                    Thickness = 1
+                })
             else
-                Items["Icon"].Instance.Image = Icon[1]
-                Items["Icon"].Instance.ImageColor3 = Icon[2] or FromRGB(255, 255, 255)
+                Items["Icon"] = Instances:Create("ImageLabel", {
+                    Parent = Items["Notification"].Instance,
+                    ImageColor3 = FromRGB(255, 255, 255),
+                    ScaleType = Enum.ScaleType.Fit,
+                    BorderColor3 = FromRGB(0, 0, 0),
+                    Name = "\0",
+                    Image = "rbxassetid://94324346713012",
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, -2, 0, 3),
+                    Size = UDim2New(0, 13, 0, 13),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })
+
+                if not Icon then
+                    Items["Icon"]:Clean()
+                    Items["Title"].Instance.Position = UDim2New(0, 1, 0, 2)
+                else
+                    Items["Icon"].Instance.Image = typeof(Icon) == "table" and Icon[1] or tostring(Icon)
+                    Items["Icon"].Instance.ImageColor3 = (typeof(Icon) == "table" and Icon[2]) or FromRGB(255, 255, 255)
+                end
             end
         end
 
@@ -1932,7 +1975,7 @@ local Library do
         end
 
         Library:Thread(function()
-            Items["Notification"]:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 0, 0, 22)})
+            Items["Notification"]:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 0, 0, notifHeight)})
 
             task.wait(0.06)
 
