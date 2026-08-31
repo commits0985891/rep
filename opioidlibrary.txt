@@ -89,7 +89,7 @@ local Library do
             ["RiskyText"] = FromRGB(220, 90, 90),
             ["Popup"] = FromRGB(180, 160, 255),
             ["WindowTitle"] = FromRGB(215, 215, 215),
-            ["WindowSubtitle"] = FromRGB(255, 65, 65),
+            ["WindowSubtitle"] = FromRGB(185, 208, 250),
             ["Gradient"] = FromRGB(100, 100, 100),
             ["Text Stroke"] = FromRGB(20, 20, 25)
         },
