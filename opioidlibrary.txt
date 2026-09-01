@@ -127,6 +127,7 @@ local Library do
             ["Folder"] = { "Folder.png", "https://img.icons8.com/?size=100&id=2yO6UjBrwe5F&format=png&color=FFFFFF" },
             ["Settings"] = { "Settings.png", "https://github.com/jewhaxx/libraries/blob/main/assets/settings.png?raw=true" },
             ["Search"] = { "Search.png", "https://github.com/jewhaxx/libraries/blob/main/assets/search.png?raw=true" },
+            ["Reload"] = { "Reload.png", "https://github.com/jewhaxx/libraries/blob/main/assets/reload.png?raw=true" },
         },
 
         Pages = { },
