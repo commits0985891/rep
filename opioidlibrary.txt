@@ -639,16 +639,34 @@ local Library do
     end
 
     local CustomFont = { } do
-        local function downloadWithRetries(url, maxRetries)
-            maxRetries = maxRetries or 6
-            for attempt = 1, maxRetries do
-                local ok, result = pcall(function()
-                    return game:HttpGet(url)
-                end)
-                if ok and type(result) == "string" and #result > 1000 then
-                    return result
+        local _fontCache = {}
+
+        local function doHttpRequest(url)
+            local okHttp, resHttp = pcall(function()
+                return game:HttpGet(url)
+            end)
+            if okHttp and type(resHttp) == "string" and #resHttp > 5000 then
+                return resHttp
+            end
+
+            local reqFn = (syn and syn.request) or (http and http.request) or http_request or request or (fluxus and fluxus.request) or (krnl and krnl.request)
+            if type(reqFn) == "function" then
+                local okReq, resReq = pcall(reqFn, { Url = url, Method = "GET" })
+                if okReq and type(resReq) == "table" and type(resReq.Body) == "string" and #resReq.Body > 5000 then
+                    return resReq.Body
                 end
-                task.wait(0.35 * attempt)
+            end
+            return nil
+        end
+
+        local function downloadWithRetries(url, maxRetries)
+            maxRetries = maxRetries or 4
+            for attempt = 1, maxRetries do
+                local res = doHttpRequest(url)
+                if res then
+                    return res
+                end
+                task.wait(0.2 * attempt)
             end
             return nil
         end
@@ -657,112 +675,136 @@ local Library do
             local ok, asset = pcall(function()
                 return getcustomasset(path)
             end)
-            if ok and asset then
+            if ok and asset and type(asset) == "string" and asset ~= "" then
                 return asset
             end
             return nil
         end
 
-        function CustomFont:New(Name, Weight, Style, Data)
-            local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
-            local ttfPath = Library.Folders.Assets .. "/" .. Name .. ".ttf"
+        local function createFontObject(ttfPath, jsonPath, name, weight, style)
+            if not isfile(ttfPath) then return nil end
 
-            -- 1. Check if valid existing JSON and TTF are already cached
-            if isfile(jsonPath) and isfile(ttfPath) then
-                local isValid = false
-                pcall(function()
-                    local ttfContent = readfile(ttfPath)
-                    local jsonContent = readfile(jsonPath)
-                    if #ttfContent > 5000 and #jsonContent > 10 then
-                        isValid = true
-                    end
-                end)
-                if isValid then
-                    local asset = safeCustomAsset(jsonPath)
-                    if asset then
-                        local ok, font = pcall(function() return Font.new(asset) end)
-                        if ok and font then return font end
-                    end
-                else
-                    -- Corrupted cache: remove bad files and re-download
-                    pcall(delfile, jsonPath)
-                    pcall(delfile, ttfPath)
-                end
+            local ttfAsset = safeCustomAsset(ttfPath)
+            if not ttfAsset then return nil end
+
+            -- Format style to valid Roblox schema ("normal" or "italic")
+            local jsonStyle = "normal"
+            if style and (style:lower() == "italic" or style:lower() == "oblique") then
+                jsonStyle = "italic"
             end
 
-            -- 2. Download TTF with retries if missing or corrupted
-            local ttfData = nil
-            if isfile(ttfPath) then
-                pcall(function()
-                    local content = readfile(ttfPath)
-                    if #content > 5000 then ttfData = content end
-                end)
-            end
+            -- Always rewrite the JSON file with the active session's fresh ttfAsset ID
+            local fontData = {
+                name = name,
+                faces = { {
+                    name = "Regular",
+                    weight = weight or 200,
+                    style = jsonStyle,
+                    assetId = ttfAsset
+                } }
+            }
 
-            if not ttfData and Data and Data.Url then
-                ttfData = downloadWithRetries(Data.Url, 6)
-                if not ttfData and Data.FallbackUrl then
-                    ttfData = downloadWithRetries(Data.FallbackUrl, 4)
-                end
-                if ttfData then
-                    pcall(function() writefile(ttfPath, ttfData) end)
-                end
-            end
+            pcall(function()
+                writefile(jsonPath, HttpService:JSONEncode(fontData))
+            end)
 
-            -- 3. Generate JSON and load custom Font Face
-            if isfile(ttfPath) then
-                local ttfAsset = safeCustomAsset(ttfPath)
-                if ttfAsset then
-                    local FontData = {
-                        name = Name,
-                        faces = { {
-                            name = "Regular",
-                            weight = Weight or 200,
-                            style = Style or "Regular",
-                            assetId = ttfAsset
-                        } }
-                    }
-
-                    pcall(function()
-                        writefile(jsonPath, HttpService:JSONEncode(FontData))
-                    end)
-
-                    if isfile(jsonPath) then
-                        local jsonAsset = safeCustomAsset(jsonPath)
-                        if jsonAsset then
-                            local ok, font = pcall(function() return Font.new(jsonAsset) end)
-                            if ok and font then
-                                return font
-                            end
-                        end
-                    end
-                end
-            end
-
-            -- 4. Clean Fallback font if network/filesystem fails
-            return Font.fromEnum(Enum.Font.GothamMedium)
-        end
-
-        function CustomFont:Get(Name)
-            local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
             if isfile(jsonPath) then
-                local asset = safeCustomAsset(jsonPath)
-                if asset then
-                    local ok, font = pcall(function() return Font.new(asset) end)
+                local jsonAsset = safeCustomAsset(jsonPath)
+                if jsonAsset then
+                    local ok, font = pcall(function() return Font.new(jsonAsset) end)
                     if ok and font then
                         return font
                     end
                 end
             end
-            return Font.fromEnum(Enum.Font.GothamMedium)
+
+            -- Fallback direct TTF asset load for executors supporting direct TTF
+            local okTtf, directFont = pcall(function() return Font.new(ttfAsset) end)
+            if okTtf and directFont then
+                return directFont
+            end
+
+            return nil
         end
 
-        CustomFont:New("Windows-XP-Tahoma", 200, "Regular", {
-            Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf",
-            FallbackUrl = "https://raw.githubusercontent.com/sametexe001/luas/main/fonts/windows-xp-tahoma.ttf"
+        function CustomFont:New(Name, Weight, Style, Data)
+            if _fontCache[Name] then
+                return _fontCache[Name]
+            end
+
+            if not isfolder(Library.Folders.Directory) then pcall(makefolder, Library.Folders.Directory) end
+            if not isfolder(Library.Folders.Assets) then pcall(makefolder, Library.Folders.Assets) end
+
+            local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
+            local ttfPath = Library.Folders.Assets .. "/" .. Name .. ".ttf"
+
+            -- 1. If valid cached TTF exists on disk, load immediately
+            if isfile(ttfPath) then
+                local isTtfValid = false
+                pcall(function()
+                    local c = readfile(ttfPath)
+                    if #c > 5000 then isTtfValid = true end
+                end)
+                if isTtfValid then
+                    local loadedFont = createFontObject(ttfPath, jsonPath, Name, Weight, Style)
+                    if loadedFont then
+                        _fontCache[Name] = loadedFont
+                        return loadedFont
+                    end
+                else
+                    pcall(delfile, ttfPath)
+                    pcall(delfile, jsonPath)
+                end
+            end
+
+            -- 2. Download TTF from primary URL, fallback URL, and CDN mirrors
+            local urls = {}
+            if Data then
+                if Data.Url then table.insert(urls, Data.Url) end
+                if Data.FallbackUrl then table.insert(urls, Data.FallbackUrl) end
+            end
+            table.insert(urls, "https://raw.githubusercontent.com/sametexe001/luas/main/fonts/windows-xp-tahoma.ttf")
+            table.insert(urls, "https://cdn.jsdelivr.net/gh/sametexe001/luas@main/fonts/windows-xp-tahoma.ttf")
+            table.insert(urls, "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf")
+
+            local ttfContent = nil
+            for _, u in ipairs(urls) do
+                ttfContent = downloadWithRetries(u, 2)
+                if ttfContent and #ttfContent > 5000 then
+                    break
+                end
+            end
+
+            if ttfContent and #ttfContent > 5000 then
+                pcall(function() writefile(ttfPath, ttfContent) end)
+                if isfile(ttfPath) then
+                    local loadedFont = createFontObject(ttfPath, jsonPath, Name, Weight, Style)
+                    if loadedFont then
+                        _fontCache[Name] = loadedFont
+                        return loadedFont
+                    end
+                end
+            end
+
+            -- 3. Robust fallback font
+            local fallback = Font.fromEnum(Enum.Font.GothamMedium)
+            _fontCache[Name] = fallback
+            return fallback
+        end
+
+        function CustomFont:Get(Name)
+            if _fontCache[Name] then
+                return _fontCache[Name]
+            end
+            return CustomFont:New(Name, 200, "Regular", nil)
+        end
+
+        local tahoma = CustomFont:New("Windows-XP-Tahoma", 200, "Regular", {
+            Url = "https://raw.githubusercontent.com/sametexe001/luas/main/fonts/windows-xp-tahoma.ttf",
+            FallbackUrl = "https://cdn.jsdelivr.net/gh/sametexe001/luas@main/fonts/windows-xp-tahoma.ttf"
         })
 
-        Library.Font = CustomFont:Get("Windows-XP-Tahoma") or Font.fromEnum(Enum.Font.GothamMedium)
+        Library.Font = tahoma or Font.fromEnum(Enum.Font.GothamMedium)
     end
 
     Library.Holder = Instances:Create("ScreenGui", {
