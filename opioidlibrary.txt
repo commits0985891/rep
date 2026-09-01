@@ -2645,7 +2645,7 @@ local Library do
             })
         })
 
-        local popupWidth = Data.Width or 440
+        local popupWidth = Data.Width or 360
         Items["Popup"] = Instances:Create("Frame", {
             Parent = Items["Backdrop"].Instance,
             AnchorPoint = Vector2New(0.5, 0.5),
