@@ -2645,11 +2645,12 @@ local Library do
             })
         })
 
+        local popupWidth = Data.Width or 520
         Items["Popup"] = Instances:Create("Frame", {
             Parent = Items["Backdrop"].Instance,
             AnchorPoint = Vector2New(0.5, 0.5),
             Position = UDim2New(0.5, 0, 0.5, 0),
-            Size = UDim2New(0, 360, 0, 0),
+            Size = UDim2New(0, popupWidth, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundColor3 = FromRGB(38, 38, 46),
             BorderColor3 = FromRGB(0, 0, 0),
@@ -2695,16 +2696,16 @@ local Library do
                 Parent = Items["Popup"].Instance,
                 FontFace = Library.Font,
                 Text = Popup.Title,
-                TextColor3 = FromRGB(255, 255, 255),
+                TextColor3 = FromRGB(255, 65, 65),
                 BackgroundTransparency = 1,
                 Size = StringFind(Popup.Title, "\n") and UDim2New(1, 0, 0, 32) or UDim2New(1, 0, 0, 16),
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
-                TextSize = StringFind(Popup.Title, "\n") and 14 or 13,
+                TextSize = 13,
                 ZIndex = 1002,
                 LayoutOrder = 1,
                 Name = "\0"
-            })
+            }):AddToTheme({ TextColor3 = "WindowSubtitle" })
         end
 
         if Popup.Subtitle and Popup.Subtitle ~= "" then
@@ -2717,7 +2718,7 @@ local Library do
                 Size = StringFind(Popup.Subtitle, "\n") and UDim2New(1, 0, 0, 30) or UDim2New(1, 0, 0, 15),
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
-                TextSize = 13,
+                TextSize = 12,
                 ZIndex = 1002,
                 LayoutOrder = 2,
                 Name = "\0"
@@ -2755,7 +2756,7 @@ local Library do
         ContentScroll.Parent = Items["Popup"].Instance
         ContentScroll.BackgroundTransparency = 1
         ContentScroll.BorderSizePixel = 0
-        ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 22, 60, 320))
+        ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 20, 60, 360))
         ContentScroll.ScrollBarThickness = 2
         ContentScroll.ScrollBarImageColor3 = Library.Theme.Accent or FromRGB(185, 208, 250)
         ContentScroll.ScrollBarImageTransparency = 0.2
