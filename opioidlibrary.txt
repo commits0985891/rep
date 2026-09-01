@@ -2615,20 +2615,28 @@ local Library do
         local Closed = false
         local Items = {}
 
+        local dialogGui = InstanceNew("ScreenGui")
+        dialogGui.Name = "\0"
+        dialogGui.ResetOnSpawn = false
+        dialogGui.DisplayOrder = 99999
+        dialogGui.IgnoreGuiInset = true
+        dialogGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        dialogGui.Parent = gethui()
+
         Items["Backdrop"] = Instances:Create("TextButton", {
-            Parent = Library.Holder.Instance,
+            Parent = dialogGui,
             AutoButtonColor = false,
             Text = "",
             BackgroundColor3 = FromRGB(0, 0, 0),
             BackgroundTransparency = 1,
             BorderColor3 = FromRGB(0, 0, 0),
             BorderSizePixel = 0,
+            Position = UDim2New(0, 0, 0, 0),
             Size = UDim2New(1, 0, 1, 0),
             ZIndex = 1000,
             Active = true,
             Name = "\0"
         })
-        Library:BringToFront(Items["Backdrop"].Instance)
 
         Instances:Create("UIGradient", {
             Parent = Items["Backdrop"].Instance,
@@ -2652,12 +2660,12 @@ local Library do
             Position = UDim2New(0.5, 0, 0.5, 0),
             Size = UDim2New(0, popupWidth, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
-            BackgroundColor3 = FromRGB(38, 38, 46),
-            BorderColor3 = FromRGB(0, 0, 0),
-            BorderSizePixel = 0,
+            BackgroundColor3 = FromRGB(15, 15, 20),
+            BorderColor3 = FromRGB(10, 10, 10),
+            BorderSizePixel = 2,
             ZIndex = 1001,
             Name = "\0"
-        })
+        }):AddToTheme({ BackgroundColor3 = "Background", BorderColor3 = "Border" })
 
         Instances:Create("UIStroke", {
             Parent = Items["Popup"].Instance,
@@ -2668,32 +2676,50 @@ local Library do
             Thickness = 1
         }):AddToTheme({ Color = "Accent" })
 
-        Instances:Create("UIGradient", {
-            Parent = Items["Popup"].Instance,
-            Rotation = 90,
-            Color = RGBSequence{
-                RGBSequenceKeypoint(0, FromRGB(48, 48, 56)),
-                RGBSequenceKeypoint(1, FromRGB(32, 32, 40))
-            }
-        })
-
         Instances:Create("UIPadding", {
             Parent = Items["Popup"].Instance,
-            PaddingTop = UDimNew(0, 14),
-            PaddingBottom = UDimNew(0, 14),
-            PaddingLeft = UDimNew(0, 14),
-            PaddingRight = UDimNew(0, 14)
+            PaddingTop = UDimNew(0, 6),
+            PaddingBottom = UDimNew(0, 6),
+            PaddingLeft = UDimNew(0, 6),
+            PaddingRight = UDimNew(0, 6)
+        })
+
+        Items["Inline"] = Instances:Create("Frame", {
+            Parent = Items["Popup"].Instance,
+            Name = "\0",
+            Size = UDim2New(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundColor3 = FromRGB(20, 20, 25),
+            BorderColor3 = FromRGB(27, 27, 32),
+            BorderSizePixel = 2,
+            ZIndex = 1002
+        }):AddToTheme({ BackgroundColor3 = "Background", BorderColor3 = "Outline" })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["Inline"].Instance,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            Color = Library.Theme.Border or FromRGB(10, 10, 10),
+            Name = "\0"
+        }):AddToTheme({ Color = "Border" })
+
+        Instances:Create("UIPadding", {
+            Parent = Items["Inline"].Instance,
+            PaddingTop = UDimNew(0, 10),
+            PaddingBottom = UDimNew(0, 10),
+            PaddingLeft = UDimNew(0, 10),
+            PaddingRight = UDimNew(0, 10)
         })
 
         Instances:Create("UIListLayout", {
-            Parent = Items["Popup"].Instance,
+            Parent = Items["Inline"].Instance,
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding = UDimNew(0, 8)
         })
 
         if Popup.Title and Popup.Title ~= "" then
             Items["Title"] = Instances:Create("TextLabel", {
-                Parent = Items["Popup"].Instance,
+                Parent = Items["Inline"].Instance,
                 FontFace = Library.Font,
                 Text = Popup.Title,
                 TextColor3 = FromRGB(255, 65, 65),
@@ -2702,7 +2728,7 @@ local Library do
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
                 TextSize = 13,
-                ZIndex = 1002,
+                ZIndex = 1003,
                 LayoutOrder = 1,
                 Name = "\0"
             }):AddToTheme({ TextColor3 = "WindowSubtitle" })
@@ -2710,7 +2736,7 @@ local Library do
 
         if Popup.Subtitle and Popup.Subtitle ~= "" then
             Items["Subtitle"] = Instances:Create("TextLabel", {
-                Parent = Items["Popup"].Instance,
+                Parent = Items["Inline"].Instance,
                 FontFace = Library.Font,
                 Text = Popup.Subtitle,
                 TextColor3 = FromRGB(200, 200, 208),
@@ -2719,19 +2745,19 @@ local Library do
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
                 TextSize = 12,
-                ZIndex = 1002,
+                ZIndex = 1003,
                 LayoutOrder = 2,
                 Name = "\0"
             }):AddToTheme({ TextColor3 = "Text" })
         end
 
         Items["Divider"] = Instances:Create("Frame", {
-            Parent = Items["Popup"].Instance,
+            Parent = Items["Inline"].Instance,
             BackgroundColor3 = FromRGB(50, 50, 58),
             BorderColor3 = FromRGB(0, 0, 0),
             BorderSizePixel = 0,
             Size = UDim2New(1, 0, 0, 1),
-            ZIndex = 1002,
+            ZIndex = 1003,
             LayoutOrder = 3,
             Name = "\0"
         })
@@ -2753,7 +2779,7 @@ local Library do
 
         local ContentScroll = InstanceNew("ScrollingFrame")
         ContentScroll.Name = "ContentScroll"
-        ContentScroll.Parent = Items["Popup"].Instance
+        ContentScroll.Parent = Items["Inline"].Instance
         ContentScroll.BackgroundTransparency = 1
         ContentScroll.BorderSizePixel = 0
         ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 20, 60, 360))
@@ -2762,7 +2788,7 @@ local Library do
         ContentScroll.ScrollBarImageTransparency = 0.2
         ContentScroll.CanvasSize = UDim2New(0, 0, 0, 0)
         ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        ContentScroll.ZIndex = 1002
+        ContentScroll.ZIndex = 1003
         ContentScroll.LayoutOrder = 4
 
         local ScrollLayout = InstanceNew("UIListLayout")
@@ -2889,11 +2915,11 @@ local Library do
         end
 
         Items["ButtonHolder"] = Instances:Create("Frame", {
-            Parent = Items["Popup"].Instance,
+            Parent = Items["Inline"].Instance,
             BackgroundTransparency = 1,
             Size = UDim2New(1, 0, 0, 18),
             BorderSizePixel = 0,
-            ZIndex = 1002,
+            ZIndex = 1003,
             LayoutOrder = 5,
             Name = "\0"
         })
@@ -2968,6 +2994,9 @@ local Library do
             task.delay(0.35, function()
                 if Items["Backdrop"] and Items["Backdrop"].Instance and Items["Backdrop"].Instance.Parent then
                     Items["Backdrop"]:Clean()
+                end
+                if dialogGui and dialogGui.Parent then
+                    dialogGui:Destroy()
                 end
             end)
             if Popup.OnConfirm then
