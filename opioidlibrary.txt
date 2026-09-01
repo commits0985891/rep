@@ -2660,12 +2660,12 @@ local Library do
             Position = UDim2New(0.5, 0, 0.5, 0),
             Size = UDim2New(0, popupWidth, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
-            BackgroundColor3 = FromRGB(15, 15, 20),
-            BorderColor3 = FromRGB(10, 10, 10),
-            BorderSizePixel = 2,
+            BackgroundColor3 = FromRGB(38, 38, 46),
+            BorderColor3 = FromRGB(0, 0, 0),
+            BorderSizePixel = 0,
             ZIndex = 1001,
             Name = "\0"
-        }):AddToTheme({ BackgroundColor3 = "Background", BorderColor3 = "Border" })
+        })
 
         Instances:Create("UIStroke", {
             Parent = Items["Popup"].Instance,
@@ -2673,108 +2673,75 @@ local Library do
             LineJoinMode = Enum.LineJoinMode.Miter,
             Name = "\0",
             Color = FromRGB(185, 208, 250),
-            Thickness = 1.5
+            Thickness = 1
         }):AddToTheme({ Color = "Accent" })
 
+        Instances:Create("UIGradient", {
+            Parent = Items["Popup"].Instance,
+            Rotation = 90,
+            Color = RGBSequence{
+                RGBSequenceKeypoint(0, FromRGB(48, 48, 56)),
+                RGBSequenceKeypoint(1, FromRGB(32, 32, 40))
+            }
+        })
+
         Instances:Create("UIPadding", {
             Parent = Items["Popup"].Instance,
-            PaddingTop = UDimNew(0, 0),
-            PaddingBottom = UDimNew(0, 7),
-            PaddingLeft = UDimNew(0, 7),
-            PaddingRight = UDimNew(0, 7)
+            PaddingTop = UDimNew(0, 14),
+            PaddingBottom = UDimNew(0, 14),
+            PaddingLeft = UDimNew(0, 14),
+            PaddingRight = UDimNew(0, 14)
         })
 
         Instances:Create("UIListLayout", {
             Parent = Items["Popup"].Instance,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDimNew(0, 0)
-        })
-
-        Items["Header"] = Instances:Create("Frame", {
-            Parent = Items["Popup"].Instance,
-            Name = "\0",
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Size = UDim2New(1, 0, 0, 19),
-            ZIndex = 1002,
-            LayoutOrder = 1
-        })
-
-        Items["Title"] = Instances:Create("TextLabel", {
-            Parent = Items["Header"].Instance,
-            FontFace = Library.Font,
-            Text = Popup.Title or "UPDATE LOG",
-            TextColor3 = FromRGB(255, 255, 255),
-            BackgroundTransparency = 1,
-            Size = UDim2New(0.5, -6, 0, 15),
-            Position = UDim2New(0, 0, 0, 2),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            BorderSizePixel = 0,
-            TextSize = 12,
-            ZIndex = 1003,
-            Name = "\0"
-        })
-
-        Instances:Create("UIStroke", {
-            Parent = Items["Title"].Instance,
-            LineJoinMode = Enum.LineJoinMode.Miter,
-            Name = "\0"
-        }):AddToTheme({ Color = "Text Border" })
-
-        local rawSub = Popup.Subtitle or ""
-        Items["Subtitle"] = Instances:Create("TextLabel", {
-            Parent = Items["Header"].Instance,
-            FontFace = Library.Font,
-            Text = rawSub:gsub("[\r\n]+%s*", " "),
-            TextColor3 = FromRGB(255, 65, 65),
-            BackgroundTransparency = 1,
-            Size = UDim2New(0.5, 0, 0, 15),
-            Position = UDim2New(0.5, 0, 0, 2),
-            TextXAlignment = Enum.TextXAlignment.Right,
-            BorderSizePixel = 0,
-            TextSize = 12,
-            ZIndex = 1003,
-            Name = "\0"
-        }):AddToTheme({ TextColor3 = "WindowSubtitle" })
-
-        Instances:Create("UIStroke", {
-            Parent = Items["Subtitle"].Instance,
-            LineJoinMode = Enum.LineJoinMode.Miter,
-            Name = "\0"
-        }):AddToTheme({ Color = "Text Border" })
-
-        Items["Inline"] = Instances:Create("Frame", {
-            Parent = Items["Popup"].Instance,
-            Name = "\0",
-            Size = UDim2New(1, 0, 0, 0),
-            AutomaticSize = Enum.AutomaticSize.Y,
-            BackgroundColor3 = FromRGB(20, 20, 25),
-            BorderColor3 = FromRGB(27, 27, 32),
-            BorderSizePixel = 2,
-            ZIndex = 1002,
-            LayoutOrder = 2
-        }):AddToTheme({ BackgroundColor3 = "Background", BorderColor3 = "Outline" })
-
-        Instances:Create("UIStroke", {
-            Parent = Items["Inline"].Instance,
-            LineJoinMode = Enum.LineJoinMode.Miter,
-            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-            Color = Library.Theme.Border or FromRGB(10, 10, 10),
-            Name = "\0"
-        }):AddToTheme({ Color = "Border" })
-
-        Instances:Create("UIPadding", {
-            Parent = Items["Inline"].Instance,
-            PaddingTop = UDimNew(0, 8),
-            PaddingBottom = UDimNew(0, 8),
-            PaddingLeft = UDimNew(0, 8),
-            PaddingRight = UDimNew(0, 8)
-        })
-
-        Instances:Create("UIListLayout", {
-            Parent = Items["Inline"].Instance,
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding = UDimNew(0, 8)
+        })
+
+        if Popup.Title and Popup.Title ~= "" then
+            Items["Title"] = Instances:Create("TextLabel", {
+                Parent = Items["Popup"].Instance,
+                FontFace = Library.Font,
+                Text = Popup.Title,
+                TextColor3 = FromRGB(255, 65, 65),
+                BackgroundTransparency = 1,
+                Size = StringFind(Popup.Title, "\n") and UDim2New(1, 0, 0, 32) or UDim2New(1, 0, 0, 16),
+                TextXAlignment = Enum.TextXAlignment.Center,
+                BorderSizePixel = 0,
+                TextSize = 13,
+                ZIndex = 1002,
+                LayoutOrder = 1,
+                Name = "\0"
+            }):AddToTheme({ TextColor3 = "WindowSubtitle" })
+        end
+
+        if Popup.Subtitle and Popup.Subtitle ~= "" then
+            Items["Subtitle"] = Instances:Create("TextLabel", {
+                Parent = Items["Popup"].Instance,
+                FontFace = Library.Font,
+                Text = Popup.Subtitle,
+                TextColor3 = FromRGB(200, 200, 208),
+                BackgroundTransparency = 1,
+                Size = StringFind(Popup.Subtitle, "\n") and UDim2New(1, 0, 0, 30) or UDim2New(1, 0, 0, 15),
+                TextXAlignment = Enum.TextXAlignment.Center,
+                BorderSizePixel = 0,
+                TextSize = 12,
+                ZIndex = 1002,
+                LayoutOrder = 2,
+                Name = "\0"
+            }):AddToTheme({ TextColor3 = "Text" })
+        end
+
+        Items["Divider"] = Instances:Create("Frame", {
+            Parent = Items["Popup"].Instance,
+            BackgroundColor3 = FromRGB(50, 50, 58),
+            BorderColor3 = FromRGB(0, 0, 0),
+            BorderSizePixel = 0,
+            Size = UDim2New(1, 0, 0, 1),
+            ZIndex = 1002,
+            LayoutOrder = 3,
+            Name = "\0"
         })
 
         local rawText = tostring(Popup.Text)
@@ -2794,7 +2761,7 @@ local Library do
 
         local ContentScroll = InstanceNew("ScrollingFrame")
         ContentScroll.Name = "ContentScroll"
-        ContentScroll.Parent = Items["Inline"].Instance
+        ContentScroll.Parent = Items["Popup"].Instance
         ContentScroll.BackgroundTransparency = 1
         ContentScroll.BorderSizePixel = 0
         ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 20, 60, 360))
@@ -2803,7 +2770,7 @@ local Library do
         ContentScroll.ScrollBarImageTransparency = 0.2
         ContentScroll.CanvasSize = UDim2New(0, 0, 0, 0)
         ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        ContentScroll.ZIndex = 1003
+        ContentScroll.ZIndex = 1002
         ContentScroll.LayoutOrder = 4
 
         local ScrollLayout = InstanceNew("UIListLayout")
@@ -2930,11 +2897,11 @@ local Library do
         end
 
         Items["ButtonHolder"] = Instances:Create("Frame", {
-            Parent = Items["Inline"].Instance,
+            Parent = Items["Popup"].Instance,
             BackgroundTransparency = 1,
             Size = UDim2New(1, 0, 0, 18),
             BorderSizePixel = 0,
-            ZIndex = 1003,
+            ZIndex = 1002,
             LayoutOrder = 5,
             Name = "\0"
         })
