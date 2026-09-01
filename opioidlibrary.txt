@@ -2673,23 +2673,47 @@ local Library do
             LineJoinMode = Enum.LineJoinMode.Miter,
             Name = "\0",
             Color = FromRGB(185, 208, 250),
-            Thickness = 1
+            Thickness = 1.5
         }):AddToTheme({ Color = "Accent" })
 
-        Items["Title"] = Instances:Create("TextLabel", {
+        Instances:Create("UIPadding", {
             Parent = Items["Popup"].Instance,
+            PaddingTop = UDimNew(0, 0),
+            PaddingBottom = UDimNew(0, 7),
+            PaddingLeft = UDimNew(0, 7),
+            PaddingRight = UDimNew(0, 7)
+        })
+
+        Instances:Create("UIListLayout", {
+            Parent = Items["Popup"].Instance,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDimNew(0, 0)
+        })
+
+        Items["Header"] = Instances:Create("Frame", {
+            Parent = Items["Popup"].Instance,
+            Name = "\0",
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Size = UDim2New(1, 0, 0, 19),
+            ZIndex = 1002,
+            LayoutOrder = 1
+        })
+
+        Items["Title"] = Instances:Create("TextLabel", {
+            Parent = Items["Header"].Instance,
             FontFace = Library.Font,
             Text = Popup.Title or "UPDATE LOG",
-            TextColor3 = FromRGB(215, 215, 215),
+            TextColor3 = FromRGB(255, 255, 255),
             BackgroundTransparency = 1,
             Size = UDim2New(0.5, -6, 0, 15),
-            Position = UDim2New(0, 6, 0, 1),
+            Position = UDim2New(0, 0, 0, 2),
             TextXAlignment = Enum.TextXAlignment.Left,
             BorderSizePixel = 0,
             TextSize = 12,
-            ZIndex = 1002,
+            ZIndex = 1003,
             Name = "\0"
-        }):AddToTheme({ TextColor3 = "WindowTitle" })
+        })
 
         Instances:Create("UIStroke", {
             Parent = Items["Title"].Instance,
@@ -2697,18 +2721,19 @@ local Library do
             Name = "\0"
         }):AddToTheme({ Color = "Text Border" })
 
+        local rawSub = Popup.Subtitle or ""
         Items["Subtitle"] = Instances:Create("TextLabel", {
-            Parent = Items["Popup"].Instance,
+            Parent = Items["Header"].Instance,
             FontFace = Library.Font,
-            Text = (Popup.Subtitle and Popup.Subtitle:gsub("\n%s*", " ")) or "neuro.net V2",
-            TextColor3 = Library.Theme.WindowSubtitle or FromRGB(185, 208, 250),
+            Text = rawSub:gsub("[\r\n]+%s*", " "),
+            TextColor3 = FromRGB(255, 65, 65),
             BackgroundTransparency = 1,
-            Size = UDim2New(0.5, -6, 0, 15),
-            Position = UDim2New(0.5, 0, 0, 1),
+            Size = UDim2New(0.5, 0, 0, 15),
+            Position = UDim2New(0.5, 0, 0, 2),
             TextXAlignment = Enum.TextXAlignment.Right,
             BorderSizePixel = 0,
             TextSize = 12,
-            ZIndex = 1002,
+            ZIndex = 1003,
             Name = "\0"
         }):AddToTheme({ TextColor3 = "WindowSubtitle" })
 
@@ -2718,14 +2743,6 @@ local Library do
             Name = "\0"
         }):AddToTheme({ Color = "Text Border" })
 
-        Instances:Create("UIPadding", {
-            Parent = Items["Popup"].Instance,
-            PaddingTop = UDimNew(0, 20),
-            PaddingBottom = UDimNew(0, 7),
-            PaddingLeft = UDimNew(0, 7),
-            PaddingRight = UDimNew(0, 7)
-        })
-
         Items["Inline"] = Instances:Create("Frame", {
             Parent = Items["Popup"].Instance,
             Name = "\0",
@@ -2734,7 +2751,8 @@ local Library do
             BackgroundColor3 = FromRGB(20, 20, 25),
             BorderColor3 = FromRGB(27, 27, 32),
             BorderSizePixel = 2,
-            ZIndex = 1002
+            ZIndex = 1002,
+            LayoutOrder = 2
         }):AddToTheme({ BackgroundColor3 = "Background", BorderColor3 = "Outline" })
 
         Instances:Create("UIStroke", {
