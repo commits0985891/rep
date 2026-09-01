@@ -2690,32 +2690,34 @@ local Library do
             Padding = UDimNew(0, 8)
         })
 
-        Items["Title"] = Instances:Create("TextLabel", {
-            Parent = Items["Popup"].Instance,
-            FontFace = Library.Font,
-            Text = Popup.Title,
-            TextColor3 = FromRGB(255, 255, 255),
-            BackgroundTransparency = 1,
-            Size = UDim2New(1, 0, 0, 16),
-            TextXAlignment = Enum.TextXAlignment.Center,
-            BorderSizePixel = 0,
-            TextSize = 13,
-            ZIndex = 1002,
-            LayoutOrder = 1,
-            Name = "\0"
-        })
+        if Popup.Title and Popup.Title ~= "" then
+            Items["Title"] = Instances:Create("TextLabel", {
+                Parent = Items["Popup"].Instance,
+                FontFace = Library.Font,
+                Text = Popup.Title,
+                TextColor3 = FromRGB(255, 255, 255),
+                BackgroundTransparency = 1,
+                Size = StringFind(Popup.Title, "\n") and UDim2New(1, 0, 0, 32) or UDim2New(1, 0, 0, 16),
+                TextXAlignment = Enum.TextXAlignment.Center,
+                BorderSizePixel = 0,
+                TextSize = StringFind(Popup.Title, "\n") and 14 or 13,
+                ZIndex = 1002,
+                LayoutOrder = 1,
+                Name = "\0"
+            })
+        end
 
-        if Popup.Subtitle then
+        if Popup.Subtitle and Popup.Subtitle ~= "" then
             Items["Subtitle"] = Instances:Create("TextLabel", {
                 Parent = Items["Popup"].Instance,
                 FontFace = Library.Font,
                 Text = Popup.Subtitle,
                 TextColor3 = FromRGB(200, 200, 208),
                 BackgroundTransparency = 1,
-                Size = UDim2New(1, 0, 0, 28),
+                Size = StringFind(Popup.Subtitle, "\n") and UDim2New(1, 0, 0, 30) or UDim2New(1, 0, 0, 15),
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
-                TextSize = 12,
+                TextSize = 13,
                 ZIndex = 1002,
                 LayoutOrder = 2,
                 Name = "\0"
