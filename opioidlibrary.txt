@@ -2662,9 +2662,9 @@ local Library do
             ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
             LineJoinMode = Enum.LineJoinMode.Miter,
             Name = "\0",
-            Color = FromRGB(180, 160, 255),
+            Color = FromRGB(185, 208, 250),
             Thickness = 1
-        }):AddToTheme({ Color = "Popup" })
+        }):AddToTheme({ Color = "Accent" })
 
         Instances:Create("UIGradient", {
             Parent = Items["Popup"].Instance,
@@ -2693,7 +2693,7 @@ local Library do
             Parent = Items["Popup"].Instance,
             FontFace = Library.Font,
             Text = Popup.Title,
-            TextColor3 = FromRGB(255, 65, 65),
+            TextColor3 = FromRGB(255, 255, 255),
             BackgroundTransparency = 1,
             Size = UDim2New(1, 0, 0, 16),
             TextXAlignment = Enum.TextXAlignment.Center,
@@ -2702,7 +2702,7 @@ local Library do
             ZIndex = 1002,
             LayoutOrder = 1,
             Name = "\0"
-        }):AddToTheme({ TextColor3 = "WindowSubtitle" })
+        })
 
         if Popup.Subtitle then
             Items["Subtitle"] = Instances:Create("TextLabel", {
@@ -2711,7 +2711,7 @@ local Library do
                 Text = Popup.Subtitle,
                 TextColor3 = FromRGB(200, 200, 208),
                 BackgroundTransparency = 1,
-                Size = UDim2New(1, 0, 0, 15),
+                Size = UDim2New(1, 0, 0, 28),
                 TextXAlignment = Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
                 TextSize = 12,
@@ -2752,9 +2752,9 @@ local Library do
         ContentScroll.Parent = Items["Popup"].Instance
         ContentScroll.BackgroundTransparency = 1
         ContentScroll.BorderSizePixel = 0
-        ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 24, 60, 320))
+        ContentScroll.Size = UDim2New(1, 0, 0, MathClamp(#bullets * 22, 60, 320))
         ContentScroll.ScrollBarThickness = 2
-        ContentScroll.ScrollBarImageColor3 = Library.Theme.Popup or FromRGB(180, 160, 255)
+        ContentScroll.ScrollBarImageColor3 = Library.Theme.Accent or FromRGB(185, 208, 250)
         ContentScroll.ScrollBarImageTransparency = 0.2
         ContentScroll.CanvasSize = UDim2New(0, 0, 0, 0)
         ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -2766,72 +2766,120 @@ local Library do
         ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ScrollLayout.Padding = UDimNew(0, 4)
 
-        for idx, bulletText in ipairs(bullets) do
+        local currentLayoutOrder = 1
+        local hasSeenAddition = false
+        local hasDivided = false
+
+        for _, bulletText in ipairs(bullets) do
             local cleanBullet = bulletText:gsub("^%s+", ""):gsub("%s+$", "")
             if #cleanBullet > 0 then
-                local Row = InstanceNew("Frame")
-                Row.Name = "Bullet_" .. idx
-                Row.Parent = ContentScroll
-                Row.Size = UDim2New(1, -6, 0, 20)
-                Row.BackgroundTransparency = 1
-                Row.BorderSizePixel = 0
-                Row.ZIndex = 1003
-                Row.LayoutOrder = idx
-
+                local isDivider = cleanBullet == "%DIVIDER%" or cleanBullet == "[DIVIDER]" or cleanBullet == "---"
                 local isAddition = cleanBullet:sub(1, 3) == "[+]"
                 local isFix = cleanBullet:sub(1, 3) == "[~]"
-                local displayText = cleanBullet
 
-                if isAddition or isFix then
-                    displayText = cleanBullet:sub(4):gsub("^%s+", "")
+                if isAddition then
+                    hasSeenAddition = true
+                elseif isFix and hasSeenAddition and not hasDivided then
+                    hasDivided = true
+                    local DivContainer = InstanceNew("Frame")
+                    DivContainer.Name = "GroupDivider"
+                    DivContainer.Parent = ContentScroll
+                    DivContainer.Size = UDim2New(1, -6, 0, 9)
+                    DivContainer.BackgroundTransparency = 1
+                    DivContainer.BorderSizePixel = 0
+                    DivContainer.ZIndex = 1003
+                    DivContainer.LayoutOrder = currentLayoutOrder
+                    currentLayoutOrder = currentLayoutOrder + 1
 
-                    local Tag = InstanceNew("TextLabel")
-                    Tag.Name = "Tag"
-                    Tag.Parent = Row
-                    Tag.FontFace = Library.Font
-                    Tag.Text = isAddition and "[+]" or "[~]"
-                    Tag.TextColor3 = isAddition and FromRGB(255, 120, 120) or FromRGB(255, 160, 160)
-                    Tag.BackgroundColor3 = isAddition and FromRGB(180, 40, 40) or FromRGB(110, 30, 30)
-                    Tag.BackgroundTransparency = 0.2
-                    Tag.BorderSizePixel = 0
-                    Tag.Size = UDim2New(0, 22, 0, 16)
-                    Tag.Position = UDim2New(0, 2, 0, 2)
-                    Tag.TextSize = 11
-                    Tag.ZIndex = 1004
+                    local DivLine = InstanceNew("Frame")
+                    DivLine.Name = "Line"
+                    DivLine.Parent = DivContainer
+                    DivLine.Size = UDim2New(1, 0, 0, 1)
+                    DivLine.Position = UDim2New(0, 0, 0.5, 0)
+                    DivLine.BackgroundColor3 = FromRGB(50, 50, 58)
+                    DivLine.BorderSizePixel = 0
+                    DivLine.ZIndex = 1004
+                end
 
-                    local TagCorner = InstanceNew("UICorner")
-                    TagCorner.CornerRadius = UDimNew(0, 3)
-                    TagCorner.Parent = Tag
+                if isDivider then
+                    local DivContainer = InstanceNew("Frame")
+                    DivContainer.Name = "ExplicitDivider"
+                    DivContainer.Parent = ContentScroll
+                    DivContainer.Size = UDim2New(1, -6, 0, 9)
+                    DivContainer.BackgroundTransparency = 1
+                    DivContainer.BorderSizePixel = 0
+                    DivContainer.ZIndex = 1003
+                    DivContainer.LayoutOrder = currentLayoutOrder
+                    currentLayoutOrder = currentLayoutOrder + 1
 
-                    local TextLabel = InstanceNew("TextLabel")
-                    TextLabel.Name = "Text"
-                    TextLabel.Parent = Row
-                    TextLabel.FontFace = Library.Font
-                    TextLabel.Text = displayText
-                    TextLabel.TextColor3 = isAddition and FromRGB(215, 215, 215) or FromRGB(185, 185, 192)
-                    TextLabel.BackgroundTransparency = 1
-                    TextLabel.Size = UDim2New(1, -30, 1, 0)
-                    TextLabel.Position = UDim2New(0, 28, 0, 0)
-                    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-                    TextLabel.TextWrapped = true
-                    TextLabel.BorderSizePixel = 0
-                    TextLabel.TextSize = 12
-                    TextLabel.ZIndex = 1004
+                    local DivLine = InstanceNew("Frame")
+                    DivLine.Name = "Line"
+                    DivLine.Parent = DivContainer
+                    DivLine.Size = UDim2New(1, 0, 0, 1)
+                    DivLine.Position = UDim2New(0, 0, 0.5, 0)
+                    DivLine.BackgroundColor3 = FromRGB(50, 50, 58)
+                    DivLine.BorderSizePixel = 0
+                    DivLine.ZIndex = 1004
                 else
-                    local TextLabel = InstanceNew("TextLabel")
-                    TextLabel.Name = "Text"
-                    TextLabel.Parent = Row
-                    TextLabel.FontFace = Library.Font
-                    TextLabel.Text = displayText
-                    TextLabel.TextColor3 = FromRGB(200, 200, 208)
-                    TextLabel.BackgroundTransparency = 1
-                    TextLabel.Size = UDim2New(1, -4, 1, 0)
-                    TextLabel.Position = UDim2New(0, 4, 0, 0)
-                    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-                    TextLabel.TextWrapped = true
-                    TextLabel.BorderSizePixel = 0
-                    TextLabel.TextSize = 12
-                    TextLabel.ZIndex = 1004
+                    local Row = InstanceNew("Frame")
+                    Row.Name = "Bullet_" .. currentLayoutOrder
+                    Row.Parent = ContentScroll
+                    Row.Size = UDim2New(1, -6, 0, 18)
+                    Row.BackgroundTransparency = 1
+                    Row.BorderSizePixel = 0
+                    Row.ZIndex = 1003
+                    Row.LayoutOrder = currentLayoutOrder
+                    currentLayoutOrder = currentLayoutOrder + 1
+
+                    local displayText = cleanBullet
+
+                    if isAddition or isFix then
+                        displayText = cleanBullet:sub(4):gsub("^%s+", "")
+
+                        local Tag = InstanceNew("TextLabel")
+                        Tag.Name = "Tag"
+                        Tag.Parent = Row
+                        Tag.FontFace = Library.Font
+                        Tag.Text = isAddition and "[+]" or "[~]"
+                        Tag.TextColor3 = FromRGB(245, 95, 95)
+                        Tag.BackgroundTransparency = 1
+                        Tag.BorderSizePixel = 0
+                        Tag.Size = UDim2New(0, 18, 0, 16)
+                        Tag.Position = UDim2New(0, 0, 0, 1)
+                        Tag.TextSize = 12
+                        Tag.TextXAlignment = Enum.TextXAlignment.Left
+                        Tag.ZIndex = 1004
+
+                        local TextLabel = InstanceNew("TextLabel")
+                        TextLabel.Name = "Text"
+                        TextLabel.Parent = Row
+                        TextLabel.FontFace = Library.Font
+                        TextLabel.Text = displayText
+                        TextLabel.TextColor3 = isAddition and FromRGB(215, 215, 215) or FromRGB(185, 185, 192)
+                        TextLabel.BackgroundTransparency = 1
+                        TextLabel.Size = UDim2New(1, -22, 1, 0)
+                        TextLabel.Position = UDim2New(0, 20, 0, 0)
+                        TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        TextLabel.TextWrapped = true
+                        TextLabel.BorderSizePixel = 0
+                        TextLabel.TextSize = 12
+                        TextLabel.ZIndex = 1004
+                    else
+                        local TextLabel = InstanceNew("TextLabel")
+                        TextLabel.Name = "Text"
+                        TextLabel.Parent = Row
+                        TextLabel.FontFace = Library.Font
+                        TextLabel.Text = displayText
+                        TextLabel.TextColor3 = FromRGB(200, 200, 208)
+                        TextLabel.BackgroundTransparency = 1
+                        TextLabel.Size = UDim2New(1, -4, 1, 0)
+                        TextLabel.Position = UDim2New(0, 4, 0, 0)
+                        TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        TextLabel.TextWrapped = true
+                        TextLabel.BorderSizePixel = 0
+                        TextLabel.TextSize = 12
+                        TextLabel.ZIndex = 1004
+                    end
                 end
             end
         end
@@ -2926,7 +2974,6 @@ local Library do
         end)
 
         Items["Confirm"]:Connect("MouseButton1Down", Close)
-        Items["Backdrop"]:Connect("MouseButton1Down", Close)
 
         Popup.Items = Items
         function Popup:Close()
