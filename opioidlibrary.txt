@@ -2891,7 +2891,7 @@ local Library do
         Items["ButtonHolder"] = Instances:Create("Frame", {
             Parent = Items["Popup"].Instance,
             BackgroundTransparency = 1,
-            Size = UDim2New(1, 0, 0, 24),
+            Size = UDim2New(1, 0, 0, 18),
             BorderSizePixel = 0,
             ZIndex = 1002,
             LayoutOrder = 5,
@@ -2900,18 +2900,16 @@ local Library do
 
         Items["Confirm"] = Instances:Create("TextButton", {
             Parent = Items["ButtonHolder"].Instance,
-            FontFace = Library.Font,
-            Text = Popup.ConfirmText,
-            TextColor3 = FromRGB(215, 215, 215),
             BorderColor3 = FromRGB(10, 10, 10),
             BorderSizePixel = 2,
             AutoButtonColor = false,
+            Name = "\0",
+            Text = "",
+            Selectable = false,
             Size = UDim2New(1, 0, 1, 0),
-            TextSize = 12,
             ZIndex = 1003,
-            BackgroundColor3 = FromRGB(33, 33, 36),
-            Name = "\0"
-        }):AddToTheme({ BackgroundColor3 = "Element", BorderColor3 = "Border", TextColor3 = "Text" })
+            BackgroundColor3 = FromRGB(33, 33, 36)
+        }):AddToTheme({ BackgroundColor3 = "Element", BorderColor3 = "Border" })
 
         Instances:Create("UIGradient", {
             Parent = Items["Confirm"].Instance,
@@ -2927,12 +2925,26 @@ local Library do
             Color = FromRGB(27, 27, 32)
         }):AddToTheme({ Color = "Outline" })
 
-        Instances:Create("UIStroke", {
+        Items["ConfirmText"] = Instances:Create("TextLabel", {
             Parent = Items["Confirm"].Instance,
+            FontFace = Library.Font,
+            TextColor3 = FromRGB(215, 215, 215),
+            Text = Popup.ConfirmText or "Dismiss",
+            Name = "\0",
+            Size = UDim2New(1, 0, 1, 0),
+            Position = UDim2New(0, 0, 0, -1),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            ZIndex = 1004
+        }):AddToTheme({ TextColor3 = "Text" })
+
+        Instances:Create("UIStroke", {
+            Parent = Items["ConfirmText"].Instance,
             LineJoinMode = Enum.LineJoinMode.Miter,
-            Color = FromRGB(0, 0, 0),
             Name = "\0"
-        })
+        }):AddToTheme({ Color = "Text Border" })
 
         task.defer(function()
             TweenService:Create(Items["Backdrop"].Instance, CachedQuartTweenInfo, { BackgroundTransparency = 0.55 }):Play()
@@ -2977,7 +2989,17 @@ local Library do
             end
         end)
 
-        Items["Confirm"]:Connect("MouseButton1Down", Close)
+        Items["Confirm"]:Connect("MouseButton1Down", function()
+            if not Closed then
+                Items["ConfirmText"]:ChangeItemTheme({ TextColor3 = "Accent" })
+                Items["Confirm"]:ChangeItemTheme({ BackgroundColor3 = "Accent" })
+                Items["ConfirmText"]:Tween(nil, { TextColor3 = Library.Theme.Accent })
+                Items["Confirm"]:Tween(nil, { BackgroundColor3 = Library.Theme.Accent })
+                task.delay(0.1, function()
+                    Close()
+                end)
+            end
+        end)
 
         Popup.Items = Items
         function Popup:Close()
