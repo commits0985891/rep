@@ -2078,7 +2078,7 @@ local Library do
                 BorderColor3 = FromRGB(10, 10, 10),
                 AnchorPoint = Vector2New(0, 0),
                 Name = "\0",
-                Position = UDim2New(0, 15, 0, 200),
+                Position = UDim2New(0, 12, 0, 584),
                 Size = UDim2New(0, 180, 0, 0),
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.Y,
