@@ -167,6 +167,7 @@ local function handle_spoof_tick()
     end;
     if equip_pause_ticks > 0 then
         equip_pause_ticks = equip_pause_ticks - 1;
+        clientcframe = primarypart.CFrame;
         return;
     end;
     local spoof = currentactive;
@@ -174,6 +175,7 @@ local function handle_spoof_tick()
         return;
     end;
     executing = true;
+    clientcframe = primarypart.CFrame;
     local success, target, restore = pcall(spoof.callback, clientcframe);
     if success and target and typeofcache(target) == "CFrame" then
         local savedVel = primarypart.AssemblyLinearVelocity;
