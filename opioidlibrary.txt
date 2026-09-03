@@ -482,6 +482,7 @@ local Library do
             local StartPosition
             local MoveConnection
             local EndConnection
+            local EndGlobalConnection
 
             local Set = function(Input)
                 LPH_ATTRIBUTES(PRESET(FAST))
@@ -490,13 +491,29 @@ local Library do
                 local NewX = StartPosition.X.Offset + DragDelta.X
                 local NewY = StartPosition.Y.Offset + DragDelta.Y
 
-                local ViewportX = Camera.ViewportSize.X
-                local ViewportY = Camera.ViewportSize.Y
+                local cam = Workspace.CurrentCamera or Camera
+                local ViewportX = (cam and cam.ViewportSize.X) or 1920
+                local ViewportY = (cam and cam.ViewportSize.Y) or 1080
                 local GuiWidth = Gui.AbsoluteSize.X
                 local GuiHeight = Gui.AbsoluteSize.Y
 
-                NewX = MathClamp(NewX, 0, ViewportX - GuiWidth)
-                NewY = MathClamp(NewY, 0, ViewportY - GuiHeight)
+                -- Safe bounds for windowed mode: viewport can be smaller than GUI dimensions
+                local MinX = math.min(0, ViewportX - GuiWidth)
+                local MaxX = math.max(0, ViewportX - GuiWidth)
+                local MinY = math.min(0, ViewportY - GuiHeight)
+                local MaxY = math.max(0, ViewportY - GuiHeight)
+
+                -- Allow dragging off-screen as needed in windowed mode while keeping at least 40px reachable
+                local BoundMinX = math.min(MinX, -GuiWidth + 40)
+                local BoundMaxX = math.max(MaxX, ViewportX - 40)
+                local BoundMinY = math.min(MinY, -GuiHeight + 40)
+                local BoundMaxY = math.max(MaxY, ViewportY - 25)
+
+                if BoundMinX > BoundMaxX then BoundMinX, BoundMaxX = BoundMaxX, BoundMinX end
+                if BoundMinY > BoundMaxY then BoundMinY, BoundMaxY = BoundMaxY, BoundMinY end
+
+                NewX = MathClamp(NewX, BoundMinX, BoundMaxX)
+                NewY = MathClamp(NewY, BoundMinY, BoundMaxY)
 
                 Gui.Position = UDim2New(0, NewX, 0, NewY)
             end
@@ -518,6 +535,7 @@ local Library do
 
                     if MoveConnection then MoveConnection:Disconnect() MoveConnection = nil end
                     if EndConnection then EndConnection:Disconnect() EndConnection = nil end
+                    if EndGlobalConnection then EndGlobalConnection:Disconnect() EndGlobalConnection = nil end
 
                     MoveConnection = UserInputService.InputChanged:Connect(function(moveInput)
                         LPH_ATTRIBUTES(PRESET(FAST))
@@ -526,23 +544,27 @@ local Library do
                         end
                     end)
 
+                    local stopDrag = function()
+                        LPH_ATTRIBUTES(PRESET(FAST))
+                        Dragging = false
+                        if MoveConnection then MoveConnection:Disconnect() MoveConnection = nil end
+                        if EndConnection then EndConnection:Disconnect() EndConnection = nil end
+                        if EndGlobalConnection then EndGlobalConnection:Disconnect() EndGlobalConnection = nil end
+                    end
+
                     EndConnection = Input.Changed:Connect(function()
                         LPH_ATTRIBUTES(PRESET(FAST))
                         if Input.UserInputState == Enum.UserInputState.End then
-                            Dragging = false
-                            if MoveConnection then MoveConnection:Disconnect() MoveConnection = nil end
-                            if EndConnection then EndConnection:Disconnect() EndConnection = nil end
+                            stopDrag()
                         end
                     end)
-                end
-            end)
 
-            self:Connect("InputEnded", function(Input)
-                LPH_ATTRIBUTES(PRESET(FAST))
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    Dragging = false
-                    if MoveConnection then MoveConnection:Disconnect() MoveConnection = nil end
-                    if EndConnection then EndConnection:Disconnect() EndConnection = nil end
+                    EndGlobalConnection = UserInputService.InputEnded:Connect(function(endInput)
+                        LPH_ATTRIBUTES(PRESET(FAST))
+                        if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
+                            stopDrag()
+                        end
+                    end)
                 end
             end)
 
@@ -15494,12 +15516,23 @@ local Library do
                         local DragDelta = Input.Position - Bezier._DragStart
                         local NewX = Bezier._DragStartPos.X.Offset + DragDelta.X
                         local NewY = Bezier._DragStartPos.Y.Offset + DragDelta.Y
-                        local ViewportX = Camera.ViewportSize.X
-                        local ViewportY = Camera.ViewportSize.Y
+                        local cam = Workspace.CurrentCamera or Camera
+                        local ViewportX = (cam and cam.ViewportSize.X) or 1920
+                        local ViewportY = (cam and cam.ViewportSize.Y) or 1080
                         local FrameW = MainFrame.AbsoluteSize.X
                         local FrameH = MainFrame.AbsoluteSize.Y
-                        NewX = MathClamp(NewX, 0, ViewportX - FrameW)
-                        NewY = MathClamp(NewY, 0, ViewportY - FrameH)
+                        local MinX = math.min(0, ViewportX - FrameW)
+                        local MaxX = math.max(0, ViewportX - FrameW)
+                        local MinY = math.min(0, ViewportY - FrameH)
+                        local MaxY = math.max(0, ViewportY - FrameH)
+                        local BoundMinX = math.min(MinX, -FrameW + 40)
+                        local BoundMaxX = math.max(MaxX, ViewportX - 40)
+                        local BoundMinY = math.min(MinY, -FrameH + 40)
+                        local BoundMaxY = math.max(MaxY, ViewportY - 25)
+                        if BoundMinX > BoundMaxX then BoundMinX, BoundMaxX = BoundMaxX, BoundMinX end
+                        if BoundMinY > BoundMaxY then BoundMinY, BoundMaxY = BoundMaxY, BoundMinY end
+                        NewX = MathClamp(NewX, BoundMinX, BoundMaxX)
+                        NewY = MathClamp(NewY, BoundMinY, BoundMaxY)
                         MainFrame.Position = UDim2New(0, NewX, 0, NewY)
                     end
                 end
