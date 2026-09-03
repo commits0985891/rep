@@ -512,8 +512,8 @@ local Library do
                 if BoundMinX > BoundMaxX then BoundMinX, BoundMaxX = BoundMaxX, BoundMinX end
                 if BoundMinY > BoundMaxY then BoundMinY, BoundMaxY = BoundMaxY, BoundMinY end
 
-                NewX = MathClamp(NewX, BoundMinX, BoundMaxX)
-                NewY = MathClamp(NewY, BoundMinY, BoundMaxY)
+                if NewX < BoundMinX then NewX = BoundMinX elseif NewX > BoundMaxX then NewX = BoundMaxX end
+                if NewY < BoundMinY then NewY = BoundMinY elseif NewY > BoundMaxY then NewY = BoundMaxY end
 
                 Gui.Position = UDim2New(0, NewX, 0, NewY)
             end
@@ -15531,8 +15531,8 @@ local Library do
                         local BoundMaxY = math.max(MaxY, ViewportY - 25)
                         if BoundMinX > BoundMaxX then BoundMinX, BoundMaxX = BoundMaxX, BoundMinX end
                         if BoundMinY > BoundMaxY then BoundMinY, BoundMaxY = BoundMaxY, BoundMinY end
-                        NewX = MathClamp(NewX, BoundMinX, BoundMaxX)
-                        NewY = MathClamp(NewY, BoundMinY, BoundMaxY)
+                        if NewX < BoundMinX then NewX = BoundMinX elseif NewX > BoundMaxX then NewX = BoundMaxX end
+                        if NewY < BoundMinY then NewY = BoundMinY elseif NewY > BoundMaxY then NewY = BoundMaxY end
                         MainFrame.Position = UDim2New(0, NewX, 0, NewY)
                     end
                 end
