@@ -1485,6 +1485,7 @@ local Library do
         end
         Unwrapped["Settings_NotifPosition"] = nil
 
+        Library._LoadingConfig = true
         local Success, Result = Library:SafeCall(function()
             for Flag, SetFunction in Library.SetFlags do
                 local Value = Unwrapped[Flag]
@@ -1513,6 +1514,8 @@ local Library do
                 end
             end
         end)
+        Library._LoadingConfig = false
+        Library._ColorSyncing = false
 
         if Success then
             Library:Notification("Successfully loaded config", 5, Color3.fromRGB(0, 255, 0))
@@ -1566,12 +1569,26 @@ local Library do
     end
 
     Library.ChangeTheme = function(self, Theme, Color)
+        if type(Color) == "string" then
+            local ok, parsed = pcall(FromHex, tostring(Color):gsub("#", ""))
+            if ok then
+                Color = parsed
+            end
+        end
+        if typeof(Color) ~= "Color3" then
+            return
+        end
         self.Theme[Theme] = Color
 
         for _, Item in self.ThemeItems do
-            for Property, Value in Item.Properties do
-                if type(Value) == "string" and Value == Theme then
-                    Item.Item[Property] = Color
+            local inst = Item and Item.Item
+            if inst then
+                for Property, Value in Item.Properties do
+                    if type(Value) == "string" and Value == Theme then
+                        pcall(function()
+                            inst[Property] = Color
+                        end)
+                    end
                 end
             end
         end
@@ -1722,13 +1739,17 @@ local Library do
     local OldChangeThemeForGradients = Library.ChangeTheme
     Library.ChangeTheme = function(self, Theme, Color)
         OldChangeThemeForGradients(self, Theme, Color)
-        if Theme == "Accent" then
+        if Theme == "Accent" and typeof(Color) == "Color3" then
             for _, GradData in Library.AnimatedGradients do
-                GradData.Gradient.Color = RGBSequence{
-                    RGBSequenceKeypoint(0, Color),
-                    RGBSequenceKeypoint(0.5, Color),
-                    RGBSequenceKeypoint(1, Color)
-                }
+                if GradData and GradData.Gradient then
+                    pcall(function()
+                        GradData.Gradient.Color = RGBSequence{
+                            RGBSequenceKeypoint(0, Color),
+                            RGBSequenceKeypoint(0.5, Color),
+                            RGBSequenceKeypoint(1, Color)
+                        }
+                    end)
+                end
             end
         end
     end
@@ -8301,6 +8322,9 @@ local Library do
             Default = Library.Theme.Base,
             Flag = "Settings_BaseColor",
             Callback = function(Color)
+                if typeof(Color) ~= "Color3" then
+                    return
+                end
                 Library:ChangeTheme("Base", Color)
                 Library:ChangeTheme("Inline", Color)
                 Library:ChangeTheme("Page Background", Color)
@@ -10425,12 +10449,17 @@ local Library do
             end
 
             UpdateSync = function(Bool)
+                if Library._LoadingConfig or Library._ColorSyncing then
+                    return
+                end
                 if IsSyncToggled and Bool then
+                    Library._ColorSyncing = true
                     for Index, Value in Library.Colorpickers do
-                        if Value ~= Colorpicker and not StringFind(Value.Flag, "Theme") then
-                            Value:Set(Colorpicker.Color)
+                        if Value ~= Colorpicker and Value.Set and not StringFind(Value.Flag, "Theme") then
+                            pcall(Value.Set, Value, Colorpicker.Color)
                         end
                     end
+                    Library._ColorSyncing = false
                 end
             end
 
@@ -10444,6 +10473,16 @@ local Library do
                     Alpha = Colorpicker.Alpha,
                     Color = Colorpicker.HexValue
                 }
+
+                if Library._LoadingConfig then
+                    if Items["ColorpickerButton"] and Items["ColorpickerButton"].Instance then
+                        Items["ColorpickerButton"].Instance.BackgroundColor3 = Colorpicker.Color
+                    end
+                    if Data.Callback then
+                        Library:SafeCall(Data.Callback, Colorpicker.Color, Colorpicker.Alpha)
+                    end
+                    return
+                end
 
                 Items["ColorpickerButton"]:Tween(nil, {BackgroundColor3 = Colorpicker.Color})
 
@@ -10478,10 +10517,30 @@ local Library do
             function Colorpicker:Set(Color, Alpha)
                 LPH_ATTRIBUTES(PRESET(FAST))
                 if type(Color) == "table" then
-                    Color = FromRGB(Color[1], Color[2], Color[3])
-                    Alpha = Color[4]
+                    if typeof(Color.Color) == "Color3" then
+                        Alpha = Alpha or Color.Alpha
+                        Color = Color.Color
+                    elseif type(Color.Color) == "string" then
+                        Alpha = Alpha or Color.Alpha
+                        local ok, parsed = pcall(FromHex, tostring(Color.Color):gsub("#", ""))
+                        if not ok or typeof(parsed) ~= "Color3" then
+                            return
+                        end
+                        Color = parsed
+                    elseif type(Color[1]) == "number" and type(Color[2]) == "number" and type(Color[3]) == "number" then
+                        Color = FromRGB(Color[1], Color[2], Color[3])
+                    else
+                        return
+                    end
                 elseif type(Color) == "string" then
-                    Color = FromHex(Color)
+                    local ok, parsed = pcall(FromHex, tostring(Color):gsub("#", ""))
+                    if not ok or typeof(parsed) ~= "Color3" then
+                        return
+                    end
+                    Color = parsed
+                end
+                if typeof(Color) ~= "Color3" then
+                    return
                 end
 
                 Colorpicker.Hue, Colorpicker.Saturation, Colorpicker.Value = Color:ToHSV()
