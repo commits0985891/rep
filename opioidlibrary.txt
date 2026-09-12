@@ -8309,6 +8309,15 @@ local Library do
             end
         })
 
+        local OutlineColor = UISettingsSection:Colorpicker({
+            Name = "Outline Color",
+            Default = Library.Theme.Outline,
+            Flag = "Settings_OutlineColor",
+            Callback = function(Color)
+                Library:ChangeTheme("Outline", Color)
+            end
+        })
+
         local TextColor = UISettingsSection:Colorpicker({
             Name = "Text Color",
             Default = Library.Theme.Text,
@@ -8351,6 +8360,7 @@ local Library do
                 AccentColor:Set(FromRGB(167, 139, 250))
                 BackgroundColor:Set(FromRGB(20, 20, 25))
                 BaseColor:Set(FromRGB(26, 26, 32))
+                OutlineColor:Set(FromRGB(38, 38, 45))
                 TextColor:Set(FromRGB(200, 200, 208))
                 PopupColor:Set(FromRGB(180, 160, 255))
                 TitleColor:Set(FromRGB(215, 215, 215))
