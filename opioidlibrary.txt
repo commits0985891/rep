@@ -20,8 +20,11 @@ end
 
 local LoadingTick = os.clock()
 
-if getgenv().Library and type(getgenv().Library.Unload) == "function" then
-    getgenv().Library:Unload()
+local storeKey = (type(getgenv()._OpioidStoreKey) == "string" and getgenv()._OpioidStoreKey ~= "" and getgenv()._OpioidStoreKey) or "Library"
+local keepExisting = getgenv()._OpioidKeepExisting
+local existingLib = getgenv()[storeKey]
+if existingLib and existingLib ~= keepExisting and type(existingLib.Unload) == "function" then
+    existingLib:Unload()
 end
 
 local Library do
@@ -1322,8 +1325,14 @@ local Library do
             self.Holder:Clean()
         end
 
+        local key = (self and self._StoreKey) or storeKey or "Library"
+        if getgenv()[key] == self then
+            getgenv()[key] = nil
+        end
+        if getgenv().Library == self then
+            getgenv().Library = nil
+        end
         Library = nil
-        getgenv().Library = nil
     end
 
     Library.Thread = function(self, Function)
@@ -11629,32 +11638,19 @@ local Library do
             end
         end
 
-        local SearchTick = 0
         local LastSearchText = ""
 
-        local SearchDebounce = function()
-            SearchTick = SearchTick + 1
-            local CurrentTick = SearchTick
-            task.delay(0.5, function()
-                if SearchTick == CurrentTick then
-                    local CurrentText = Items["SearchInput"].Instance.Text
-                    if CurrentText ~= LastSearchText then
-                        LastSearchText = CurrentText
-                        Window:Search(CurrentText)
-                    end
-                end
-            end)
+        local ApplySearch = function(Text)
+            Text = Text or Items["SearchInput"].Instance.Text
+            if Text == LastSearchText then
+                return
+            end
+            LastSearchText = Text
+            Window:Search(Text)
         end
 
         Library:Connect(Items["SearchInput"].Instance:GetPropertyChangedSignal("Text"), function()
-            local CurrentText = Items["SearchInput"].Instance.Text
-            if CurrentText == "" then
-                SearchTick = SearchTick + 1
-                LastSearchText = ""
-                Window:Search("")
-            else
-                SearchDebounce()
-            end
+            ApplySearch(Items["SearchInput"].Instance.Text)
         end)
 
         Items["SearchContainer"]:OnHover(function()
@@ -11672,15 +11668,10 @@ local Library do
             Items["SearchIcon"]:Tween(CachedHoverTweenInfo, {ImageColor3 = Library.Theme.Accent, ImageTransparency = 0})
         end)
 
-        Items["SearchInput"]:Connect("FocusLost", function(EnterPressed)
+        Items["SearchInput"]:Connect("FocusLost", function()
             Items["SearchContainer"]:Tween(CachedHoverTweenInfo, {BorderColor3 = Library.Theme.Border})
             Items["SearchIcon"]:Tween(CachedHoverTweenInfo, {ImageColor3 = Library.Theme.Text, ImageTransparency = 0.45})
-            if EnterPressed then
-                SearchTick = SearchTick + 1
-                local CurrentText = Items["SearchInput"].Instance.Text
-                LastSearchText = CurrentText
-                Window:Search(CurrentText)
-            end
+            ApplySearch(Items["SearchInput"].Instance.Text)
         end)
 
         Library:Connect(UserInputService.InputBegan, function(Input, Processed)
@@ -16572,5 +16563,9 @@ local Library do
 
 end
 
-getgenv().Library = Library
+Library._StoreKey = storeKey
+getgenv()[storeKey] = Library
+if storeKey == "Library" then
+    getgenv().Library = Library
+end
 return Library
