@@ -80,6 +80,7 @@ local Library do
 
         Theme = {
             ["Background"] = FromRGB(20, 20, 25),
+            ["Base"] = FromRGB(26, 26, 32),
             ["Inline"] = FromRGB(26, 26, 32),
             ["Page Background"] = FromRGB(32, 32, 38),
             ["Border"] = FromRGB(12, 12, 16),
@@ -8295,6 +8296,19 @@ local Library do
             end
         })
 
+        local BaseColor = UISettingsSection:Colorpicker({
+            Name = "Base Color",
+            Default = Library.Theme.Base,
+            Flag = "Settings_BaseColor",
+            Callback = function(Color)
+                Library:ChangeTheme("Base", Color)
+                Library:ChangeTheme("Inline", Color)
+                Library:ChangeTheme("Page Background", Color)
+                Library:ChangeTheme("Element", Color)
+                Library:ChangeTheme("Hovered Element", Color:Lerp(FromRGB(255, 255, 255), 0.08))
+            end
+        })
+
         local TextColor = UISettingsSection:Colorpicker({
             Name = "Text Color",
             Default = Library.Theme.Text,
@@ -8336,6 +8350,7 @@ local Library do
             Callback = function()
                 AccentColor:Set(FromRGB(167, 139, 250))
                 BackgroundColor:Set(FromRGB(20, 20, 25))
+                BaseColor:Set(FromRGB(26, 26, 32))
                 TextColor:Set(FromRGB(200, 200, 208))
                 PopupColor:Set(FromRGB(180, 160, 255))
                 TitleColor:Set(FromRGB(215, 215, 215))
