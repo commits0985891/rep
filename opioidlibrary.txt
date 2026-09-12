@@ -1485,23 +1485,17 @@ local Library do
         end
         Unwrapped["Settings_NotifPosition"] = nil
 
+        if Library._LoadingConfig then
+            Library:Notification("Already loading a config", 3, FromRGB(255, 140, 0))
+            return
+        end
+
         Library._LoadingConfig = true
+        local applied = 0
         local Success, Result = Library:SafeCall(function()
             for Flag, SetFunction in Library.SetFlags do
                 local Value = Unwrapped[Flag]
-
-                if Value == nil then
-                    local DefaultVal = Library.Defaults and Library.Defaults[Flag]
-                    if DefaultVal ~= nil then
-                        pcall(function()
-                            if type(DefaultVal) == "table" and DefaultVal.Color ~= nil then
-                                SetFunction(DefaultVal.Color, DefaultVal.Alpha)
-                            else
-                                SetFunction(DefaultVal)
-                            end
-                        end)
-                    end
-                else
+                if Value ~= nil then
                     pcall(function()
                         if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
                             SetFunction(Value)
@@ -1511,6 +1505,10 @@ local Library do
                             SetFunction(Value)
                         end
                     end)
+                    applied = applied + 1
+                    if applied % 20 == 0 then
+                        task.wait()
+                    end
                 end
             end
         end)
@@ -9298,7 +9296,12 @@ local Library do
                     Value = Value.v ~= nil and Value.v or Value[1] or Value.Value or Data.Min
                 end
                 Value = tonumber(Value) or Data.Default or Data.Min
-                Slider.Value = Library:Round(MathClamp(Value, Data.Min, Data.Max), Data.Decimals)
+                local newVal = Library:Round(MathClamp(Value, Data.Min, Data.Max), Data.Decimals)
+                if Slider.Value == newVal then
+                    Library.Flags[Slider.Flag] = newVal
+                    return
+                end
+                Slider.Value = newVal
                 Library.Flags[Slider.Flag] = Slider.Value
 
                 Items["Indicator"]:Tween(CachedQuartTweenInfo, {Size = UDim2New((Slider.Value - Data.Min) / (Data.Max - Data.Min), 0, 1, 0)})
@@ -9529,10 +9532,22 @@ local Library do
                 if type(Value) == "table" and Value.v ~= nil then
                     Value = Value.v
                 end
-                Toggle.Value = Value and true or false
+                local newVal = Value and true or false
+                if Toggle.Value == newVal then
+                    Library.Flags[Toggle.Flag] = newVal
+                    return
+                end
+                Toggle.Value = newVal
                 Library.Flags[Toggle.Flag] = Toggle.Value
 
-                if Toggle.Value then
+                if Library._LoadingConfig then
+                    if Items["Indicator"] and Items["Indicator"].Instance then
+                        Items["Indicator"].Instance.BackgroundColor3 = Toggle.Value and Library.Theme.Accent or Library.Theme.Element
+                    end
+                    if Items["Text"] and Items["Text"].Instance then
+                        Items["Text"].Instance.TextTransparency = Toggle.Value and 0 or 0.48
+                    end
+                elseif Toggle.Value then
                     Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
                     Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
                     Items["Text"]:Tween(nil, {TextTransparency = 0})
@@ -10540,6 +10555,9 @@ local Library do
                     Color = parsed
                 end
                 if typeof(Color) ~= "Color3" then
+                    return
+                end
+                if typeof(Colorpicker.Color) == "Color3" and Colorpicker.Color == Color and (Colorpicker.Alpha or 0) == (Alpha or 0) then
                     return
                 end
 
@@ -13155,22 +13173,33 @@ local Library do
             if type(Bool) == "table" and Bool.v ~= nil then
                 Bool = Bool.v
             end
+            local newVal
             if Bool == nil then
-                Toggle.Value = not Toggle.Value
+                newVal = not Toggle.Value
             else
-                Toggle.Value = Bool and true or false
+                newVal = Bool and true or false
             end
+            if Toggle.Value == newVal then
+                Library.Flags[Toggle.Flag] = newVal
+                return
+            end
+            Toggle.Value = newVal
 
             Library.Flags[Toggle.Flag] = Toggle.Value
 
-            if Toggle.Value then
+            if Library._LoadingConfig then
+                if Items["Indicator"] and Items["Indicator"].Instance then
+                    Items["Indicator"].Instance.BackgroundColor3 = Toggle.Value and Library.Theme.Accent or Library.Theme.Element
+                end
+                if Items["Text"] and Items["Text"].Instance then
+                    Items["Text"].Instance.TextTransparency = Toggle.Value and 0 or 0.48
+                end
+            elseif Toggle.Value then
                 Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
-
                 Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
                 Items["Text"]:Tween(nil, {TextTransparency = 0})
             else
                 Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element"})
-
                 Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
                 Items["Text"]:Tween(nil, {TextTransparency = 0.48})
             end
@@ -13818,7 +13847,12 @@ local Library do
                 Value = Value.v ~= nil and Value.v or Value[1] or Value.Value or Value.val
             end
             Value = tonumber(Value) or Slider.Default or Slider.Min
-            Slider.Value = MathClamp(Library:Round(Value, Slider.Decimals), Slider.Min, Slider.Max)
+            local newVal = MathClamp(Library:Round(Value, Slider.Decimals), Slider.Min, Slider.Max)
+            if Slider.Value == newVal then
+                Library.Flags[Slider.Flag] = newVal
+                return
+            end
+            Slider.Value = newVal
 
             Library.Flags[Slider.Flag] = Slider.Value
 
