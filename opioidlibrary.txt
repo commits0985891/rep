@@ -11445,6 +11445,22 @@ local Library do
             local FirstMatchingPage = nil
             local CurrentActivePageHasMatches = false
 
+            local function featureAllowed(Feature)
+                if Feature.UserVisible == false then
+                    return false
+                end
+                if Feature.Object and Feature.Object._UserVisible == false then
+                    return false
+                end
+                return true
+            end
+
+            local function setFeatureVisible(Feature, Visible)
+                if Feature.Instance then
+                    Feature.Instance.Visible = Visible
+                end
+            end
+
             for _, Sec in Window.Sections do
                 local SectionFrame = Sec.Elements and (Sec.Elements["Section"] or Sec.Elements["MultiSection"])
                 if SectionFrame and SectionFrame.Instance then
@@ -11471,22 +11487,12 @@ local Library do
                                     SubSec.Elements["Content"].Instance.Visible = SubSec.Active
                                 end
                                 for _, Feature in (SubSec.Features or { }) do
-                                    if Feature.Instance then
-                                        Feature.Instance.Visible = true
-                                    end
-                                    if Feature.ParentInstance then
-                                        Feature.ParentInstance.Visible = true
-                                    end
+                                    setFeatureVisible(Feature, featureAllowed(Feature))
                                 end
                             end
                         end
                         for _, Feature in (Sec.Features or { }) do
-                            if Feature.Instance then
-                                Feature.Instance.Visible = true
-                            end
-                            if Feature.ParentInstance then
-                                Feature.ParentInstance.Visible = true
-                            end
+                            setFeatureVisible(Feature, featureAllowed(Feature))
                         end
                     else
                         local SectionName = string.lower(Sec.Name or "")
@@ -11522,13 +11528,9 @@ local Library do
                                         or (StrippedQuery ~= "" and StringFind(StrippedFeatureName, StrippedQuery, 1, true) ~= nil)
                                         or (FlagName ~= "" and (StringFind(FlagName, CleanQuery, 1, true) ~= nil or (StrippedQuery ~= "" and StringFind(StrippedFlagName, StrippedQuery, 1, true) ~= nil)))
 
-                                    if Feature.Instance then
-                                        Feature.Instance.Visible = IsMatch
-                                    end
-                                    if IsMatch then
-                                        if Feature.ParentInstance then
-                                            Feature.ParentInstance.Visible = true
-                                        end
+                                    local vis = featureAllowed(Feature) and IsMatch
+                                    setFeatureVisible(Feature, vis)
+                                    if vis then
                                         SubMatches = SubMatches + 1
                                         SectionMatches = SectionMatches + 1
                                     end
@@ -11580,13 +11582,9 @@ local Library do
                                     or (StrippedQuery ~= "" and StringFind(StrippedFeatureName, StrippedQuery, 1, true) ~= nil)
                                     or (FlagName ~= "" and (StringFind(FlagName, CleanQuery, 1, true) ~= nil or (StrippedQuery ~= "" and StringFind(StrippedFlagName, StrippedQuery, 1, true) ~= nil)))
 
-                                if Feature.Instance then
-                                    Feature.Instance.Visible = IsMatch
-                                end
-                                if IsMatch then
-                                    if Feature.ParentInstance then
-                                        Feature.ParentInstance.Visible = true
-                                    end
+                                local vis = featureAllowed(Feature) and IsMatch
+                                setFeatureVisible(Feature, vis)
+                                if vis then
                                     SectionMatches = SectionMatches + 1
                                 end
                             end
@@ -12849,8 +12847,26 @@ local Library do
             Instance = Data.Instance,
             ParentInstance = Data.ParentInstance,
             Object = Data.Object,
-            Flag = Data.Flag
+            Flag = Data.Flag,
+            UserVisible = true
         }
+
+        if Data.Object then
+            Data.Object._SearchFeature = Feature
+            if Data.Object._UserVisible == false then
+                Feature.UserVisible = false
+            end
+            local origSetVis = Data.Object.SetVisibility
+            if type(origSetVis) == "function" then
+                Data.Object.SetVisibility = function(self, Bool)
+                    local vis = Bool == true
+                    Feature.UserVisible = vis
+                    self._UserVisible = vis
+                    return origSetVis(self, Bool)
+                end
+                Data.Object.SetVisiblity = Data.Object.SetVisibility
+            end
+        end
 
         TableInsert(self.Window.Features, Feature)
 
