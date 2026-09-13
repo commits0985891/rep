@@ -9537,30 +9537,39 @@ local Library do
                 Toggle.Value = newVal
                 Library.Flags[Toggle.Flag] = Toggle.Value
 
-                if Toggle.Value then
-                    Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent", BorderColor3 = "Border"})
-                    if Library._LoadingConfig then
-                        Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Accent
-                        Items["Text"].Instance.TextTransparency = 0
+                if Items["Indicator"] then
+                    if Toggle.Value then
+                        Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
+                        if Library._LoadingConfig and Items["Indicator"].Instance then
+                            Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Accent
+                        else
+                            Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
+                        end
+                        if Items["Text"] then
+                            if Library._LoadingConfig and Items["Text"].Instance then
+                                Items["Text"].Instance.TextTransparency = 0
+                            else
+                                Items["Text"]:Tween(nil, {TextTransparency = 0})
+                            end
+                        end
                     else
-                        Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
-                        Items["Text"]:Tween(nil, {TextTransparency = 0})
-                    end
-                else
-                    Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element", BorderColor3 = "Border"})
-                    if Library._LoadingConfig then
-                        Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Element
-                        Items["Text"].Instance.TextTransparency = 0.48
-                    else
-                        Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
-                        Items["Text"]:Tween(nil, {TextTransparency = 0.48})
+                        Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element"})
+                        if Library._LoadingConfig and Items["Indicator"].Instance then
+                            Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Element
+                        else
+                            Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
+                        end
+                        if Items["Text"] then
+                            if Library._LoadingConfig and Items["Text"].Instance then
+                                Items["Text"].Instance.TextTransparency = 0.48
+                            else
+                                Items["Text"]:Tween(nil, {TextTransparency = 0.48})
+                            end
+                        end
                     end
                 end
 
-                if unchanged then
-                    return
-                end
-                if Data.Callback then
+                if not unchanged and Data.Callback then
                     Library:SafeCall(Data.Callback, Toggle.Value)
                 end
             end
@@ -13186,30 +13195,39 @@ local Library do
             Toggle.Value = newVal
             Library.Flags[Toggle.Flag] = Toggle.Value
 
-            if Toggle.Value then
-                Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent", BorderColor3 = "Border"})
-                if Library._LoadingConfig then
-                    Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Accent
-                    Items["Text"].Instance.TextTransparency = 0
+            if Items["Indicator"] then
+                if Toggle.Value then
+                    Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
+                    if Library._LoadingConfig and Items["Indicator"].Instance then
+                        Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Accent
+                    else
+                        Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
+                    end
+                    if Items["Text"] then
+                        if Library._LoadingConfig and Items["Text"].Instance then
+                            Items["Text"].Instance.TextTransparency = 0
+                        else
+                            Items["Text"]:Tween(nil, {TextTransparency = 0})
+                        end
+                    end
                 else
-                    Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
-                    Items["Text"]:Tween(nil, {TextTransparency = 0})
-                end
-            else
-                Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element", BorderColor3 = "Border"})
-                if Library._LoadingConfig then
-                    Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Element
-                    Items["Text"].Instance.TextTransparency = 0.48
-                else
-                    Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
-                    Items["Text"]:Tween(nil, {TextTransparency = 0.48})
+                    Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element"})
+                    if Library._LoadingConfig and Items["Indicator"].Instance then
+                        Items["Indicator"].Instance.BackgroundColor3 = Library.Theme.Element
+                    else
+                        Items["Indicator"]:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
+                    end
+                    if Items["Text"] then
+                        if Library._LoadingConfig and Items["Text"].Instance then
+                            Items["Text"].Instance.TextTransparency = 0.48
+                        else
+                            Items["Text"]:Tween(nil, {TextTransparency = 0.48})
+                        end
+                    end
                 end
             end
 
-            if unchanged then
-                return
-            end
-            if Toggle.Callback then
+            if not unchanged and Toggle.Callback then
                 Library:SafeCall(Toggle.Callback, Toggle.Value)
             end
         end
