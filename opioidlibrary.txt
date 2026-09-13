@@ -11215,14 +11215,17 @@ local Library do
                         Keybind:Set("None")
                     else
                         Keybind:Set(Input.KeyCode)
+                        Keybind.ConsumeUntilUp = true
                     end
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     Keybind:Set("MouseButton1")
+                    Keybind.ConsumeUntilUp = true
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
                     -- Right-click cancels key picking, does not bind right click
                     Keybind:Set(Keybind.Key or "None")
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
                     Keybind:Set("MouseButton3")
+                    Keybind.ConsumeUntilUp = true
                 end
 
                 if InputBegan then
@@ -11240,7 +11243,10 @@ local Library do
         Items["KeyButton"]:Connect("MouseButton2Click", toggleModeMenu)
 
         Library:Connect(UserInputService.InputBegan, function(Input, Processed)
-            if Processed or UserInputService:GetFocusedTextBox() then return end
+            if UserInputService:GetFocusedTextBox() then return end
+            if Keybind.ConsumeUntilUp then
+                return
+            end
             if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
                 if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
                     if Keybind.Mode == "Toggle" then
@@ -11261,6 +11267,9 @@ local Library do
         end)
 
         Library:Connect(UserInputService.InputEnded, function(Input)
+            if Keybind.ConsumeUntilUp and Keybind.Key and (tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key) then
+                Keybind.ConsumeUntilUp = false
+            end
             if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
                 if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
                     if Keybind.Mode == "Hold" then
