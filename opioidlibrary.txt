@@ -9735,8 +9735,8 @@ local Library do
                 Saturation = 0,
                 Value = 0,
                 Alpha = 0,
-                Color = FromRGB(255, 255, 255),
-                HexValue = "#ffffff",
+                Color = FromRGB(157, 175, 255),
+                HexValue = "#9dafff",
                 Pages = Data.Pages ~= false and { } or nil,
                 Flag = Data.Flag,
             }
@@ -10501,10 +10501,11 @@ local Library do
                     Color = Colorpicker.HexValue
                 }
 
+                if Items["ColorpickerButton"] and Items["ColorpickerButton"].Instance then
+                    Items["ColorpickerButton"].Instance.BackgroundColor3 = Colorpicker.Color
+                end
+
                 if Library._LoadingConfig then
-                    if Items["ColorpickerButton"] and Items["ColorpickerButton"].Instance then
-                        Items["ColorpickerButton"].Instance.BackgroundColor3 = Colorpicker.Color
-                    end
                     if Data.Callback then
                         Library:SafeCall(Data.Callback, Colorpicker.Color, Colorpicker.Alpha)
                     end
@@ -10570,6 +10571,9 @@ local Library do
                     return
                 end
                 if typeof(Colorpicker.Color) == "Color3" and Colorpicker.Color == Color and (Colorpicker.Alpha or 0) == (Alpha or 0) then
+                    if Items["ColorpickerButton"] and Items["ColorpickerButton"].Instance then
+                        Items["ColorpickerButton"].Instance.BackgroundColor3 = Color
+                    end
                     return
                 end
 
@@ -13067,6 +13071,7 @@ local Library do
 
             Risky = Data.Risky or Data.risky or false,
             RiskyText = Data.RiskyText or Data.riskytext or "Enabling this feature may have unintended consequences. Are you sure you want to continue?",
+            WaitTime = Data.WaitTime or Data.waittime or 2,
             RiskConfirmed = false,
 
             Value = false,
@@ -13276,6 +13281,11 @@ local Library do
                 Extension.Items["ColorpickerButton"].Instance.AnchorPoint = Vector2New(0, 0.5)
                 Extension.Items["ColorpickerButton"].Instance.Position = UDim2New(0, 0, 0.5, 0)
                 Extension.Items["ColorpickerButton"].Instance.LayoutOrder = Toggle.Count
+                if typeof(Extension.Color) == "Color3" then
+                    Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Extension.Color
+                elseif typeof(Data.Default) == "Color3" then
+                    Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Data.Default
+                end
             end
 
             Extension.Colorpicker = Toggle.Colorpicker
@@ -13341,6 +13351,7 @@ local Library do
                     Window = Toggle.Window,
                     Parent = Toggle.Window.Elements["MainFrame"],
                     Text = Toggle.RiskyText,
+                    WaitTime = Toggle.WaitTime or 2,
                     OnConfirm = function()
                         Toggle.RiskConfirmed = true
                         Toggle:Set(true)
@@ -14503,6 +14514,11 @@ local Library do
         if Extension.Items and Extension.Items["ColorpickerButton"] then
             Extension.Items["ColorpickerButton"].Instance.AnchorPoint = Vector2New(1, 0.5)
             Extension.Items["ColorpickerButton"].Instance.Position = UDim2New(1, -2, 0.5, 0)
+            if typeof(Extension.Color) == "Color3" then
+                Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Extension.Color
+            elseif typeof(Colorpicker.Default) == "Color3" then
+                Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Colorpicker.Default
+            end
         end
 
         function Colorpicker:Set(Color, Alpha)
@@ -14704,6 +14720,11 @@ local Library do
                 Extension.Items["ColorpickerButton"].Instance.AnchorPoint = Vector2New(0, 0.5)
                 Extension.Items["ColorpickerButton"].Instance.Position = UDim2New(0, 0, 0.5, 0)
                 Extension.Items["ColorpickerButton"].Instance.LayoutOrder = Label.Count
+                if typeof(Extension.Color) == "Color3" then
+                    Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Extension.Color
+                elseif typeof(Data.Default) == "Color3" then
+                    Extension.Items["ColorpickerButton"].Instance.BackgroundColor3 = Data.Default
+                end
             end
 
             Label.Section:RegisterFeature({
