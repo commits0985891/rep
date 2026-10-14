@@ -11643,7 +11643,26 @@ local Library do
             local StrippedQuery = not IsEmpty and StringGSub(CleanQuery, "%s+", "") or ""
 
             local FirstMatchingPage = nil
+            local FirstMatchingSubPage = nil
             local CurrentActivePageHasMatches = false
+
+            -- Sections inside a SubPage point at the SubPage; its .Page is the real tab.
+            local function noteMatch(Owner)
+                if not Owner then
+                    return
+                end
+                local TopPage, SubPage = Owner, nil
+                if Owner.Page then
+                    TopPage, SubPage = Owner.Page, Owner
+                end
+                if TopPage.Active and (not SubPage or SubPage.Active) then
+                    CurrentActivePageHasMatches = true
+                end
+                if not FirstMatchingPage then
+                    FirstMatchingPage = TopPage
+                    FirstMatchingSubPage = SubPage
+                end
+            end
 
             local function featureAllowed(Feature)
                 if Feature.UserVisible == false then
@@ -11757,14 +11776,7 @@ local Library do
                                         FirstMatchingSubSec.Elements["Content"].Instance.Visible = true
                                     end
                                 end
-                                if Sec.Page then
-                                    if Sec.Page.Active then
-                                        CurrentActivePageHasMatches = true
-                                    end
-                                    if not FirstMatchingPage then
-                                        FirstMatchingPage = Sec.Page
-                                    end
-                                end
+                                noteMatch(Sec.Page)
                             else
                                 SectionFrame.Instance.Visible = false
                             end
@@ -11797,14 +11809,7 @@ local Library do
                                 if Sec.Elements["Chevron"] then
                                     Sec.Elements["Chevron"].Instance.Text = "-"
                                 end
-                                if Sec.Page then
-                                    if Sec.Page.Active then
-                                        CurrentActivePageHasMatches = true
-                                    end
-                                    if not FirstMatchingPage then
-                                        FirstMatchingPage = Sec.Page
-                                    end
-                                end
+                                noteMatch(Sec.Page)
                             else
                                 SectionFrame.Instance.Visible = false
                             end
@@ -11831,6 +11836,14 @@ local Library do
                         if P.Elements["Hide"] then
                             P.Elements["Hide"].Instance.Visible = WantActive
                         end
+                    end
+                end
+            end
+
+            if not IsEmpty and FirstMatchingSubPage and not CurrentActivePageHasMatches then
+                for _, Sp in Window.SubPages do
+                    if Sp.Page == FirstMatchingSubPage.Page then
+                        Sp:Turn(Sp == FirstMatchingSubPage, true)
                     end
                 end
             end
@@ -12373,8 +12386,8 @@ local Library do
 
         local Debounce = false
 
-        function SubPage:Turn(Bool)
-            if Debounce then
+        function SubPage:Turn(Bool, Force)
+            if Debounce and not Force then
                 return
             end
 
@@ -14452,41 +14465,88 @@ local Library do
         end
 
         local Debounce = false
+        local FollowConn
+
+        -- True only while the dropdown and every ancestor frame are visible (page/subpage/window shown).
+        local IsShown = function()
+            local Current = Items["Dropdown"].Instance
+            while Current and Current:IsA("GuiObject") do
+                if not Current.Visible then
+                    return false
+                end
+                Current = Current.Parent
+            end
+            return Current ~= nil
+        end
+
+        -- The option list lives in the top-level holder while open, so the column ScrollingFrame
+        -- cannot clip it and later sections cannot draw over it.
+        local ApplyOpen = function(Bool)
+            Dropdown.IsOpen = Bool
+
+            local Holder = Items["OptionHolder"].Instance
+
+            if FollowConn then
+                FollowConn:Disconnect()
+                FollowConn = nil
+            end
+
+            if Bool then
+                Holder.Parent = Library.Holder.Instance
+                Holder.Visible = true
+                Library:BringToFront(Holder)
+                Items["Open"].Instance.Text = "-"
+                Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
+
+                local Follow = function()
+                    if not IsShown() then
+                        Dropdown:Close()
+                        return
+                    end
+                    local DropdownPos = Items["RealDropdown"].Instance.AbsolutePosition
+                    local DropdownSize = Items["RealDropdown"].Instance.AbsoluteSize
+                    local HolderHeight = Holder.AbsoluteSize.Y
+                    local SpaceBelow = Camera.ViewportSize.Y - (DropdownPos.Y + DropdownSize.Y + 5)
+                    local SpaceAbove = DropdownPos.Y - 5
+
+                    local YPos
+                    if SpaceBelow >= HolderHeight or SpaceBelow >= SpaceAbove then
+                        YPos = DropdownPos.Y + DropdownSize.Y + 5
+                    else
+                        YPos = DropdownPos.Y - HolderHeight - 5
+                    end
+
+                    Holder.Position = UDim2New(0, DropdownPos.X, 0, YPos)
+                    Holder.Size = UDim2New(0, DropdownSize.X, 0, 0)
+                end
+
+                Follow()
+                FollowConn = RunService.RenderStepped:Connect(Follow)
+            else
+                Items["Open"].Instance.Text = "+"
+                Items["Open"].Instance.Position = UDim2New(0, -4, 0, -1)
+
+                Holder.Visible = false
+                Holder.Parent = Items["Dropdown"].Instance
+                Holder.Position = UDim2New(0, 0, 1, 5)
+                Holder.Size = UDim2New(1, 0, 0, 0)
+            end
+        end
+
+        function Dropdown:Close()
+            if Dropdown.IsOpen then
+                ApplyOpen(false)
+            end
+        end
 
         function Dropdown:SetOpen(Bool)
             if Debounce then
                 return
             end
 
-            Dropdown.IsOpen = Bool
-
             Debounce = true
+            ApplyOpen(Bool)
 
-            if Bool then
-                Items["OptionHolder"].Instance.Visible = true
-                local TopZ = Items["Dropdown"].Instance.ZIndex + 10
-                Items["OptionHolder"].Instance.ZIndex = TopZ
-                Items["Open"].Instance.Text = "-"
-                Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
-            else
-                Items["Open"].Instance.Text = "+"
-                Items["Open"].Instance.Position = UDim2New(0, -4, 0, -1)
-            end
-
-            local Descendants = Items["OptionHolder"].Instance:GetDescendants()
-            TableInsert(Descendants, Items["OptionHolder"].Instance)
-
-            local TopZ = Items["Dropdown"].Instance.ZIndex + 10
-            for Index, Value in Descendants do
-                if not StringFind(Value.ClassName, "UI") then
-                    Value.ZIndex = Bool and TopZ or 1
-                end
-            end
-
-            if not Bool then
-                Items["OptionHolder"].Instance.Visible = false
-                Items["OptionHolder"].Instance.ZIndex = 1
-            end
             task.delay(0.1, function()
                 Debounce = false
             end)
