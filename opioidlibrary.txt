@@ -1383,6 +1383,73 @@ local Library do
         return Connection
     end
 
+    -- Shared input dispatch. Every dropdown, colorpicker (with its sub-dropdown and keyframe pickers), keybind, the context
+    -- menu, the window menu key... used to add its OWN permanent UserInputService.InputBegan / InputEnded connection: about
+    -- 300 in the script. Each connection is a separate handler thread the engine resumes, so every key press, click and
+    -- camera drag (right mouse) ran ~300 of them, almost all returning immediately. Elements now register a plain function
+    -- and ONE connection per signal calls them in a loop.
+    Library.InputHandlers = { Began = {}, Ended = {}, Changed = {} }
+    Library.InputHandlerConns = {}
+    Library.InputCtx = {}
+    Library.OnInput = function(self, Kind, Callback)
+        local list = self.InputHandlers[Kind]
+        if not self.InputHandlerConns[Kind] then
+            local Signal = (Kind == "Began" and UserInputService.InputBegan)
+                or (Kind == "Ended" and UserInputService.InputEnded)
+                or UserInputService.InputChanged
+            self.InputHandlerConns[Kind] = self:Connect(Signal, function(Input, Processed)
+                local ctx = Library.InputCtx
+                ctx.Input = Input
+                ctx.KeyStr = nil
+                ctx.TypeStr = nil
+                ctx.FocusedChecked = false
+                ctx.Focused = nil
+                for i = 1, #list do
+                    local fn = list[i]
+                    if fn then
+                        local ok, err = pcall(fn, Input, Processed)
+                        if not ok then
+                            warn(err)
+                        end
+                    end
+                end
+            end)
+        end
+        list[#list + 1] = Callback
+        local handle = { Connected = true }
+        handle.Disconnect = function()
+            handle.Connected = false
+            for i = #list, 1, -1 do
+                if list[i] == Callback then
+                    table.remove(list, i)
+                    break
+                end
+            end
+        end
+        return handle
+    end
+
+    -- tostring(KeyCode) / tostring(UserInputType) and GetFocusedTextBox(), worked out once per input event and shared by
+    -- every keybind (each keybind used to do all three itself, on every key press and release).
+    Library.InputKeyStrings = function(self, Input)
+        local ctx = self.InputCtx
+        if ctx.Input ~= Input or not ctx.KeyStr then
+            ctx.Input = Input
+            ctx.KeyStr = tostring(Input.KeyCode)
+            ctx.TypeStr = tostring(Input.UserInputType)
+        end
+        return ctx.KeyStr, ctx.TypeStr
+    end
+    Library.FocusedTextBox = function(self, Input)
+        local ctx = self.InputCtx
+        if ctx.Input ~= Input or not ctx.FocusedChecked then
+            ctx.Input = Input
+            ctx.FocusedChecked = true
+            ctx.Focused = UserInputService:GetFocusedTextBox()
+        end
+        return ctx.Focused
+    end
+
     Library.Disconnect = function(self, Name)
         for Index, Value in self.Connections do
             if Value.Name == Name then
@@ -3639,7 +3706,7 @@ local Library do
             end
         end)
 
-        Library:Connect(UserInputService.InputBegan, function(Input)
+        Library:OnInput("Began", function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and SDOpen and not SDJustOpened then
                 local MousePos = UserInputService:GetMouseLocation()
                 local GuiInset = game:GetService("GuiService"):GetGuiInset().Y
@@ -5510,7 +5577,7 @@ local Library do
             return Vector2New(MousePos.X, MousePos.Y - GuiInset.Y)
         end
 
-        Library:Connect(UserInputService.InputBegan, function(input)
+        Library:OnInput("Began", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 if Items["Window"].Instance.Visible then
                     local MousePos = GetAdjustedMousePos()
@@ -5527,13 +5594,13 @@ local Library do
             end
         end)
 
-        Library:Connect(UserInputService.InputEnded, function(input)
+        Library:OnInput("Ended", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 Dragging = false
             end
         end)
 
-        Library:Connect(UserInputService.InputChanged, function(input)
+        Library:OnInput("Changed", function(input)
             if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                 local MousePos = GetAdjustedMousePos()
                 local DX = MousePos.X - LastMouseX
@@ -5545,7 +5612,7 @@ local Library do
             end
         end)
 
-        Library:Connect(UserInputService.InputChanged, function(input)
+        Library:OnInput("Changed", function(input)
             if input.UserInputType == Enum.UserInputType.MouseWheel then
                 if Items["Window"].Instance.Visible then
                     local MousePos = GetAdjustedMousePos()
@@ -7459,7 +7526,7 @@ local Library do
             end)
         end
 
-        Library:Connect(UserInputService.InputBegan, function(Input)
+        Library:OnInput("Began", function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and ContextMenu.Visible then
                 if not JustOpenedMenu and not Library:IsMouseOverFrame(Items["ContextMenu"]) then
                     CloseContextMenu()
@@ -9151,7 +9218,7 @@ local Library do
                 Items["RealDropdown"]:Tween(nil, {BackgroundColor3 = Library.Theme["Background"]})
             end)
 
-            Library:Connect(UserInputService.InputBegan, function(Input)
+            Library:OnInput("Began", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if not Dropdown.IsOpen then return end
                     if Library:IsMouseOverFrame(Items["OptionHolder"]) then return end
@@ -10740,7 +10807,7 @@ local Library do
                 end)
             end
 
-            Library:Connect(UserInputService.InputBegan, function(Input)
+            Library:OnInput("Began", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if not Colorpicker.IsOpen then return end
                     if Library:IsMouseOverFrame(Items["ColorpickerWindow"]) then return end
@@ -11246,17 +11313,19 @@ local Library do
 
         Items["KeyButton"]:Connect("MouseButton2Click", toggleModeMenu)
 
-        Library:Connect(UserInputService.InputBegan, function(Input, Processed)
-            if UserInputService:GetFocusedTextBox() then return end
+        Library:OnInput("Began", function(Input, Processed)
+            if Library:FocusedTextBox(Input) then return end
             if Keybind.ConsumeUntilUp then
                 return
             end
             if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
+                local KeyStr, TypeStr = Library:InputKeyStrings(Input)
+                if KeyStr == Keybind.Key or TypeStr == Keybind.Key then
+                    -- Press runs the user's callback, which may yield: keep it off the shared input loop.
                     if Keybind.Mode == "Toggle" then
-                        Keybind:Press()
+                        task.spawn(Keybind.Press, Keybind)
                     elseif Keybind.Mode == "Hold" then
-                        Keybind:Press(true)
+                        task.spawn(Keybind.Press, Keybind, true)
                     end
                 end
             end
@@ -11270,15 +11339,19 @@ local Library do
             end
         end)
 
-        Library:Connect(UserInputService.InputEnded, function(Input)
-            if Keybind.ConsumeUntilUp and Keybind.Key and (tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key) then
+        Library:OnInput("Ended", function(Input)
+            local Key = Keybind.Key
+            if not Key then
+                return
+            end
+            local KeyStr, TypeStr = Library:InputKeyStrings(Input)
+            local Match = KeyStr == Key or TypeStr == Key
+            if Keybind.ConsumeUntilUp and Match then
                 Keybind.ConsumeUntilUp = false
             end
-            if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
-                if tostring(Input.KeyCode) == Keybind.Key or tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Hold" then
-                        Keybind:Press(false)
-                    end
+            if Match and not Keybind.Picking and Key ~= "" and Key ~= "None" and Key ~= "nil" then
+                if Keybind.Mode == "Hold" then
+                    task.spawn(Keybind.Press, Keybind, false)
                 end
             end
         end)
@@ -11799,10 +11872,9 @@ local Library do
             ApplySearch(Items["SearchInput"].Instance.Text)
         end)
 
-        Library:Connect(UserInputService.InputBegan, function(Input, Processed)
-            if Processed or UserInputService:GetFocusedTextBox() then return end
-            local InputKey = tostring(Input.KeyCode)
-            local InputType = tostring(Input.UserInputType)
+        Library:OnInput("Began", function(Input, Processed)
+            if Processed or Library:FocusedTextBox(Input) then return end
+            local InputKey, InputType = Library:InputKeyStrings(Input)
 
             local MenuKey = Library.MenuKeybind
             local FlagData = Library.Flags["Settings_MenuKeybind"]
@@ -12011,9 +12083,9 @@ local Library do
                 Items["Columns"] = Instances:Create("Frame", {
                     Parent = Items["Page"].Instance,
                     Name = "\0",
-                    Position = UDim2New(0, 7, 0, 45),
+                    Position = UDim2New(0, 7, 0, 34),
                     BorderColor3 = FromRGB(10, 10, 10),
-                    Size = UDim2New(1, -14, 1, -52),
+                    Size = UDim2New(1, -14, 1, -41),
                     BorderSizePixel = 2,
                     BackgroundColor3 = FromRGB(15, 15, 20)
                 })  Items["Columns"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
@@ -12024,7 +12096,7 @@ local Library do
                     BackgroundTransparency = 1,
                     Position = UDim2New(0, 7, 0, 7),
                     BorderColor3 = FromRGB(0, 0, 0),
-                    Size = UDim2New(1, -14, 0, 35),
+                    Size = UDim2New(1, -14, 0, 24),
                     BorderSizePixel = 0,
                     BackgroundColor3 = FromRGB(255, 255, 255)
                 })
@@ -12245,9 +12317,9 @@ local Library do
 
             Instances:Create("UIPadding", {
                 Parent = Items["Subtab"].Instance,
-                PaddingTop = UDimNew(0, 6),
-                PaddingRight = UDimNew(0, 6),
-                PaddingLeft = UDimNew(0, 6)
+                PaddingTop = UDimNew(0, 0),
+                PaddingRight = UDimNew(0, 0),
+                PaddingLeft = UDimNew(0, 0)
             })
 
             Instances:Create("UIListLayout", {
@@ -12345,14 +12417,10 @@ local Library do
         end
 
         Items["Inactive"]:Connect("MouseButton1Down", function()
-            for Index, Value in SubPage.Window.SubPages do
-                Value:Turn(Value == SubPage)
-            end
+            for Index, Value in SubPage.Window.SubPages do if Value.Page == SubPage.Page then Value:Turn(Value == SubPage) end end
         end)
 
-        if #SubPage.Window.SubPages == 0 then
-            SubPage:Turn(true)
-        end
+        local _firstSub = true for _, _sp in SubPage.Window.SubPages do if _sp.Page == SubPage.Page then _firstSub = false break end end SubPage:Turn(_firstSub)
 
         SubPage.Elements = Items
 
@@ -16499,7 +16567,7 @@ local Library do
             Items["SettingsIcon"]:Tween(nil, { ImageColor3 = Library.Theme.Text })
         end)
 
-        Library:Connect(UserInputService.InputBegan, function(Input)
+        Library:OnInput("Began", function(Input)
             if SettingsIsOpen and not JustOpened and Input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local MousePos = Vector2New(Mouse.X, Mouse.Y)
                 local WinPos = Items["SettingsWindow"].Instance.AbsolutePosition
