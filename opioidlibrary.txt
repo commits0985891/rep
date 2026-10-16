@@ -11642,26 +11642,37 @@ local Library do
             local CleanQuery = not IsEmpty and string.lower(StringGSub(Query, "^%s*(.-)%s*$", "%1")) or ""
             local StrippedQuery = not IsEmpty and StringGSub(CleanQuery, "%s+", "") or ""
 
-            local FirstMatchingPage = nil
-            local FirstMatchingSubPage = nil
-            local CurrentActivePageHasMatches = false
-
+            -- Every tab / subtab with matches gets a score; the search shows the best one, from any tab (it used to stay on
+            -- the current tab whenever that had any match at all, and never looked at the other subtabs of a tab).
             -- Sections inside a SubPage point at the SubPage; its .Page is the real tab.
-            local function noteMatch(Owner)
+            local Scores, Order = { }, { }
+            local function noteMatch(Owner, Score)
                 if not Owner then
                     return
                 end
-                local TopPage, SubPage = Owner, nil
-                if Owner.Page then
-                    TopPage, SubPage = Owner.Page, Owner
+                if not Scores[Owner] then
+                    Scores[Owner] = 0
+                    TableInsert(Order, Owner)
                 end
-                if TopPage.Active and (not SubPage or SubPage.Active) then
-                    CurrentActivePageHasMatches = true
+                Scores[Owner] = Scores[Owner] + (Score or 1)
+            end
+            -- A section named after the query ("Animation Player" for "animation") beats a single option that merely
+            -- contains it ("No Shoot Animation"); names starting with the query (or one of its words) rank higher.
+            local function startsWith(Name)
+                Name = string.lower(StringGSub(Name or "", "<[^>]+>", ""))
+                return CleanQuery ~= "" and (string.sub(Name, 1, #CleanQuery) == CleanQuery or StringFind(Name, " " .. CleanQuery, 1, true) ~= nil)
+            end
+            local function sectionScore(Sec, NameMatches, Matches)
+                local Score = Matches * 10
+                if NameMatches then
+                    Score = Score + 100 + (startsWith(Sec.Name) and 50 or 0)
                 end
-                if not FirstMatchingPage then
-                    FirstMatchingPage = TopPage
-                    FirstMatchingSubPage = SubPage
+                for _, Feature in (Sec.Features or { }) do
+                    if Feature.Instance and Feature.Instance.Visible and startsWith(Feature.Name) then
+                        Score = Score + 15
+                    end
                 end
+                return Score
             end
 
             local function featureAllowed(Feature)
@@ -11776,7 +11787,7 @@ local Library do
                                         FirstMatchingSubSec.Elements["Content"].Instance.Visible = true
                                     end
                                 end
-                                noteMatch(Sec.Page)
+                                noteMatch(Sec.Page, sectionScore(Sec, SectionNameMatches, SectionMatches))
                             else
                                 SectionFrame.Instance.Visible = false
                             end
@@ -11809,7 +11820,7 @@ local Library do
                                 if Sec.Elements["Chevron"] then
                                     Sec.Elements["Chevron"].Instance.Text = "-"
                                 end
-                                noteMatch(Sec.Page)
+                                noteMatch(Sec.Page, sectionScore(Sec, SectionNameMatches, SectionMatches))
                             else
                                 SectionFrame.Instance.Visible = false
                             end
@@ -11818,34 +11829,85 @@ local Library do
                 end
             end
 
-            if not IsEmpty and not CurrentActivePageHasMatches and FirstMatchingPage then
-                for _, P in Window.Pages do
-                    local WantActive = (P == FirstMatchingPage)
-                    P.Active = WantActive
-                    if P.Elements and P.Elements["Page"] then
-                        P.Elements["Page"].Instance.Visible = WantActive
-                    end
-                    if P.Elements then
-                        if P.Elements["Text"] then
-                            P.Elements["Text"].Instance.TextTransparency = WantActive and 0 or 0.5
-                            P.Elements["Text"].Instance.TextColor3 = WantActive and Library.Theme.Accent or Library.Theme.Text
-                        end
-                        if P.Elements["AccentLine"] then
-                            P.Elements["AccentLine"].Instance.Visible = WantActive
-                        end
-                        if P.Elements["Hide"] then
-                            P.Elements["Hide"].Instance.Visible = WantActive
+            -- Colorpickers / keybinds sitting on a toggle or label are features of their own, but they belong to that row:
+            -- show them whenever their row is shown (they used to vanish when the row matched and they did not), and
+            -- show the row when one of them matched (the button lives inside the row).
+            if not IsEmpty then
+                for _, Feature in Window.Features do
+                    local Row = Feature.ParentInstance
+                    if Row and Feature.Instance and featureAllowed(Feature) then
+                        if Feature.Instance.Visible then
+                            Row.Visible = true
+                        elseif Row.Visible then
+                            Feature.Instance.Visible = true
                         end
                     end
                 end
             end
 
-            if not IsEmpty and FirstMatchingSubPage and not CurrentActivePageHasMatches then
-                for _, Sp in Window.SubPages do
-                    if Sp.Page == FirstMatchingSubPage.Page then
-                        Sp:Turn(Sp == FirstMatchingSubPage, true)
+            Window.SearchResults, Window.SearchIndex = { }, 0
+            if IsEmpty or #Order == 0 then
+                return
+            end
+            -- Best first. On a tie the tab you are already looking at wins (no pointless jump).
+            local function isShown(Owner)
+                if Owner.Page then
+                    return Owner.Page.Active and Owner.Active
+                end
+                return Owner.Active
+            end
+            table.sort(Order, function(A, B)
+                if Scores[A] ~= Scores[B] then
+                    return Scores[A] > Scores[B]
+                end
+                return isShown(A) and not isShown(B)
+            end)
+            Window.SearchResults, Window.SearchIndex = Order, 1
+            Window:ShowSearchOwner(Order[1])
+        end
+
+        -- Shows a search result: its tab (+ subtab). Used by Search and by Enter in the search box (next result).
+        function Window:ShowSearchOwner(Owner)
+            if not Owner then
+                return
+            end
+            local TopPage, SubPage = Owner, nil
+            if Owner.Page then
+                TopPage, SubPage = Owner.Page, Owner
+            end
+            for _, P in Window.Pages do
+                local WantActive = (P == TopPage)
+                P.Active = WantActive
+                if P.Elements and P.Elements["Page"] then
+                    P.Elements["Page"].Instance.Visible = WantActive
+                end
+                if P.Elements then
+                    if P.Elements["Text"] then
+                        P.Elements["Text"].Instance.TextTransparency = WantActive and 0 or 0.5
+                        P.Elements["Text"].Instance.TextColor3 = WantActive and Library.Theme.Accent or Library.Theme.Text
+                    end
+                    if P.Elements["AccentLine"] then
+                        P.Elements["AccentLine"].Instance.Visible = WantActive
+                    end
+                    if P.Elements["Hide"] then
+                        P.Elements["Hide"].Instance.Visible = WantActive
                     end
                 end
+            end
+            if SubPage then
+                for _, Sp in Window.SubPages do
+                    if Sp.Page == TopPage then
+                        Sp:Turn(Sp == SubPage, true)
+                    end
+                end
+            end
+        end
+
+        -- Clicking a tab / subtab yourself ends the search (clears the box, everything shows again).
+        function Window:ClearSearch()
+            local Box = Window.Elements and Window.Elements["SearchInput"]
+            if Box and Box.Instance and Box.Instance.Text ~= "" then
+                Box.Instance.Text = ""
             end
         end
 
@@ -11879,10 +11941,19 @@ local Library do
             Items["SearchIcon"]:Tween(CachedHoverTweenInfo, {ImageColor3 = Library.Theme.Accent, ImageTransparency = 0})
         end)
 
-        Items["SearchInput"]:Connect("FocusLost", function()
+        Items["SearchInput"]:Connect("FocusLost", function(EnterPressed)
             Items["SearchContainer"]:Tween(CachedHoverTweenInfo, {BorderColor3 = Library.Theme.Border})
             Items["SearchIcon"]:Tween(CachedHoverTweenInfo, {ImageColor3 = Library.Theme.Text, ImageTransparency = 0.45})
+            local Before = LastSearchText
             ApplySearch(Items["SearchInput"].Instance.Text)
+            -- Enter on an unchanged search: go to the next matching tab / subtab.
+            if EnterPressed and Before == Items["SearchInput"].Instance.Text then
+                local Results = Window.SearchResults
+                if Results and #Results > 1 then
+                    Window.SearchIndex = (Window.SearchIndex or 1) % #Results + 1
+                    Window:ShowSearchOwner(Results[Window.SearchIndex])
+                end
+            end
         end)
 
         Library:OnInput("Began", function(Input, Processed)
@@ -12163,6 +12234,9 @@ local Library do
             end)
         end
         Items["Inactive"]:Connect("MouseButton1Down", function()
+            if Page.Window.ClearSearch then
+                Page.Window:ClearSearch()
+            end
             for Index, Value in Page.Window.Pages do
                 Value:Turn(Value == Page)
             end
@@ -12430,6 +12504,9 @@ local Library do
         end
 
         Items["Inactive"]:Connect("MouseButton1Down", function()
+            if SubPage.Window.ClearSearch then
+                SubPage.Window:ClearSearch()
+            end
             for Index, Value in SubPage.Window.SubPages do if Value.Page == SubPage.Page then Value:Turn(Value == SubPage) end end
         end)
 
