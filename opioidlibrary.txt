@@ -1560,6 +1560,12 @@ local Library do
         Library._LoadingConfig = true
         local applied = 0
         local Success, Result = Library:SafeCall(function()
+            -- Animated colours (Rainbow, Fade, ...) are stopped first. A config that doesn't animate a colour has
+            -- nothing saved for its animation, so the old animation used to keep running after the load; one that
+            -- does gets it started again below when that value is applied.
+            for _, Picker in Library.Colorpickers do
+                if Picker.StopAnimation then pcall(Picker.StopAnimation, Picker) end
+            end
             for Flag, SetFunction in Library.SetFlags do
                 local Value = Unwrapped[Flag]
                 if Value ~= nil then
@@ -9112,6 +9118,7 @@ local Library do
                 local OptionText = Instances:Create("TextLabel", {
                     Parent = OptionButton.Instance,
                     Name = "\0",
+                    ZIndex = ParentZ + 5, -- above the list's background (it was left at 1 and drawn behind it)
                     FontFace = Library.Font,
                     TextColor3 = FromRGB(200, 200, 208),
                     BorderColor3 = FromRGB(0, 0, 0),
@@ -9812,6 +9819,10 @@ local Library do
             local OldColor = Colorpicker.Color
             local OldAlpha = Colorpicker.Alpha
             local CurrentAnimation
+            -- Every start / stop of an animation bumps AnimGen; a running animation loop ends as soon as AnimGen has
+            -- moved on. AnimRestore: put the colour from before the animation back when it ends (only when the user
+            -- turns the animation off; not when switching to another one, and never when a config load stops it).
+            local AnimGen, AnimRestore = 0, false
 
             local AnimationsDropdown, AnimationsDropdownItems
             local KeyframeOneLabel, KeyframeOneLabelItems
@@ -10165,7 +10176,16 @@ local Library do
                     Flag = Colorpicker.Flag.."Animation",
                     Multi = false,
                     Callback = function(Value)
+                        AnimGen = AnimGen + 1
+                        AnimRestore = (Value == nil)
                         CurrentAnimation = Value
+                        local myGen = AnimGen
+                        -- each loop checks this BEFORE recolouring, so once it's stopped nothing overwrites the
+                        -- colour anymore (a config's colour used to get one more animated frame on top of it)
+                        local function stopped()
+                            return AnimGen ~= myGen
+                        end
+
                         if Value == "Rainbow" then
                             if KeyframeOneLabel and KeyframeTwoLabel and AnimationSpeedSlider then
                                 KeyframeOneLabel:SetVisibility(false)
@@ -10178,16 +10198,13 @@ local Library do
 
                             Library:Thread(function()
                                 while task.wait() do
-                                    local RainbowHue = MathAbs(MathSin(tick() * (AnimationSpeedSlider.Value / 25)))
-                                    local Color = FromHSV(RainbowHue, 1, 1)
-
-                                    Colorpicker:Set(Color, Colorpicker.Alpha)
-                                    UpdateSync(true)
-
-                                    if CurrentAnimation ~= "Rainbow" then
-                                        Colorpicker:Set(OldColor, Colorpicker.Alpha)
+                                    if stopped() then
+                                        if AnimRestore then Colorpicker:Set(OldColor, Colorpicker.Alpha) end
                                         break
                                     end
+                                    local RainbowHue = MathAbs(MathSin(tick() * (AnimationSpeedSlider.Value / 25)))
+                                    Colorpicker:Set(FromHSV(RainbowHue, 1, 1), Colorpicker.Alpha)
+                                    UpdateSync(true)
                                 end
                             end)
                         elseif Value == "Fade" then
@@ -10202,14 +10219,13 @@ local Library do
 
                             Library:Thread(function()
                                 while task.wait() do
+                                    if stopped() then
+                                        if AnimRestore then Colorpicker:Set(OldColor, Colorpicker.Alpha) end
+                                        break
+                                    end
                                     local Speed = MathAbs(MathSin(tick() * (AnimationSpeedSlider.Value / 25)))
                                     Colorpicker:Set(KeyframeOneColorpicker.Color:Lerp(FromRGB(0, 0, 0), Speed), Colorpicker.Alpha)
                                     UpdateSync(true)
-
-                                    if CurrentAnimation ~= "Fade" then
-                                        Colorpicker:Set(OldColor, Colorpicker.Alpha)
-                                        break
-                                    end
                                 end
                             end)
                         elseif Value == "Fade alpha" then
@@ -10224,14 +10240,13 @@ local Library do
 
                             Library:Thread(function()
                                 while task.wait() do
+                                    if stopped() then
+                                        if AnimRestore then Colorpicker:Set(Colorpicker.Color, OldAlpha) end
+                                        break
+                                    end
                                     local AlphaValue = MathAbs(MathSin(tick() * (AnimationSpeedSlider.Value / 25)))
                                     Colorpicker:Set(Colorpicker.Color, AlphaValue)
                                     UpdateSync(true)
-
-                                    if CurrentAnimation ~= "Fade alpha" then
-                                        Colorpicker:Set(Colorpicker.Color, OldAlpha)
-                                        break
-                                    end
                                 end
                             end)
                         elseif Value == "Linear" then
@@ -10246,14 +10261,13 @@ local Library do
 
                             Library:Thread(function()
                                 while task.wait() do
+                                    if stopped() then
+                                        if AnimRestore then Colorpicker:Set(OldColor, Colorpicker.Alpha) end
+                                        break
+                                    end
                                     local Speed = MathAbs(MathSin(tick() * (AnimationSpeedSlider.Value / 25)))
                                     Colorpicker:Set(KeyframeOneColorpicker.Color:Lerp(KeyframeTwoColorpicker.Color, Speed), Colorpicker.Alpha)
                                     UpdateSync(true)
-
-                                    if CurrentAnimation ~= "Linear" then
-                                        Colorpicker:Set(OldColor, Colorpicker.Alpha)
-                                        break
-                                    end
                                 end
                             end)
                         elseif Value == "Gradient" then
@@ -10270,18 +10284,24 @@ local Library do
                             Library:Thread(function()
                                 local t = 0
                                 while task.wait() do
+                                    if stopped() then
+                                        if AnimRestore then Colorpicker:Set(OldColor, Colorpicker.Alpha) end
+                                        AnimationSpeedSliderItems["Text"].Instance.Text = "Speed"
+                                        break
+                                    end
                                     t = t + (AnimationSpeedSlider.Value / 25)
                                     local phase = (MathSin(t) + 1) / 2
                                     Colorpicker:Set(KeyframeOneColorpicker.Color:Lerp(KeyframeTwoColorpicker.Color, phase), Colorpicker.Alpha)
                                     UpdateSync(true)
-
-                                    if CurrentAnimation ~= "Gradient" then
-                                        Colorpicker:Set(OldColor, Colorpicker.Alpha)
-                                        AnimationSpeedSliderItems["Text"].Instance.Text = "Speed"
-                                        break
-                                    end
                                 end
                             end)
+                        else
+                            -- no animation: its settings go away too
+                            if KeyframeOneLabel and KeyframeTwoLabel and AnimationSpeedSlider then
+                                KeyframeOneLabel:SetVisibility(false)
+                                KeyframeTwoLabel:SetVisibility(false)
+                                AnimationSpeedSlider:SetVisibility(false)
+                            end
                         end
                     end
                 })
@@ -10339,6 +10359,26 @@ local Library do
                 AnimationSpeedSliderItems["Slider"].Instance.Position = UDim2New(0, 8, 0, 85)
                 AnimationSpeedSliderItems["Slider"].Instance.Size = UDim2New(1, -16, 0, 28)
                 AnimationSpeedSliderItems["Slider"].Instance.Visible = false
+
+                -- Used by LoadConfig: stops whatever animation runs on this colour and clears its dropdown, without
+                -- putting the old colour back (the config's colour is what should stay). If the config has an
+                -- animation for this colour, applying it starts that animation again.
+                function Colorpicker:StopAnimation()
+                    if CurrentAnimation == nil and AnimationsDropdown.Value == nil then return end
+                    AnimGen = AnimGen + 1
+                    AnimRestore = false
+                    CurrentAnimation = nil
+                    AnimationsDropdown.Value = nil
+                    Library.Flags[AnimationsDropdown.Flag] = nil
+                    for _, Option in AnimationsDropdown.Options do
+                        Option.Selected = false
+                        Option:Toggle("Inactive")
+                    end
+                    AnimationsDropdownItems["Value"].Instance.Text = "--"
+                    KeyframeOneLabel:SetVisibility(false)
+                    KeyframeTwoLabel:SetVisibility(false)
+                    AnimationSpeedSlider:SetVisibility(false)
+                end
             end
 
             local IsSyncToggled
