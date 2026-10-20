@@ -1,0 +1,1 @@
+TEST 1: Original magazine geometry and texture. Upload model_0.json and mag_0.rgba to public GitHub repo. Edit BASE in VOLT_LOAD_MODEL_0.lua to raw URL ending with / . Run Lua script in Volt. This is a test, not the complete weapon collection. Requires EditableMesh, EditableImage, WritePixelsBuffer and Roblox API permissions.
