@@ -11765,8 +11765,8 @@ local Library do
             }):AddToTheme({Color = "Outline"})
         end
 
-        Window.OpenTime = 0.26
-        Window.CloseTime = 0.18
+        Window.OpenTime = 0.2
+        Window.CloseTime = 0.15
         Window.Shown = Window.IsOpen
         local Fx = { Progress = Window.IsOpen and 1 or 0, Token = 0 }
 
@@ -11780,26 +11780,24 @@ local Library do
 
         local function fxBegin()
             if Fx.Group then return end
-            local Holder = Library.Holder.Instance
-            local Group = InstanceNew("CanvasGroup")
-            Group.Name = "\0"
-            Group.BackgroundTransparency = 1
-            Group.BorderSizePixel = 0
-            Group.AnchorPoint = Vector2New(0.5, 0.5)
-            Group.Position = UDim2New(0.5, 0, 0.5, 0)
-            Group.Size = UDim2New(1, 0, 1, 0)
-            Group.ZIndex = Items["MainFrame"].Instance.ZIndex
-            local Scale = InstanceNew("UIScale")
-            Scale.Parent = Group
-            Group.Parent = Holder
-            Fx.Group, Fx.Scale, Fx.Moved = Group, Scale, { }
-            local Main = Items["MainFrame"].Instance
-            local Center = Main.AbsolutePosition + Main.AbsoluteSize / 2
-            local Screen = Holder.AbsoluteSize
-            Group.AnchorPoint = Vector2New(Center.X / math.max(Screen.X, 1), Center.Y / math.max(Screen.Y, 1))
-            Group.Position = UDim2New(Group.AnchorPoint.X, 0, Group.AnchorPoint.Y, 0)
+            Fx.Group, Fx.Moved = { }, { }
+            local Pad = 4
             for _, F in fxFrames() do
-                Fx.Moved[#Fx.Moved + 1] = { Frame = F, Parent = F.Parent }
+                local Group = InstanceNew("CanvasGroup")
+                Group.Name = "\0"
+                Group.BackgroundTransparency = 1
+                Group.BorderSizePixel = 0
+                Group.AnchorPoint = Vector2New(0, 0)
+                local Abs, Size = F.AbsolutePosition, F.AbsoluteSize
+                local Origin = F.Parent.AbsolutePosition
+                Group.Position = UDim2New(0, Abs.X - Origin.X - Pad, 0, Abs.Y - Origin.Y - Pad)
+                Group.Size = UDim2New(0, Size.X + Pad * 2, 0, Size.Y + Pad * 2)
+                Group.ZIndex = F.ZIndex
+                Group.Parent = F.Parent
+                Fx.Group[#Fx.Group + 1] = Group
+                Fx.Moved[#Fx.Moved + 1] = { Frame = F, Parent = F.Parent, Position = F.Position, AnchorPoint = F.AnchorPoint }
+                F.AnchorPoint = Vector2New(0, 0)
+                F.Position = UDim2New(0, Pad, 0, Pad)
                 F.Parent = Group
             end
         end
@@ -11807,19 +11805,23 @@ local Library do
         local function fxEnd()
             if not Fx.Group then return end
             for _, M in Fx.Moved do
-                if M.Frame and M.Frame.Parent == Fx.Group then
+                if M.Frame and M.Frame.Parent and M.Frame.Parent:IsA("CanvasGroup") then
                     M.Frame.Parent = M.Parent
+                    M.Frame.AnchorPoint = M.AnchorPoint
+                    M.Frame.Position = M.Position
                 end
             end
-            Fx.Group:Destroy()
-            Fx.Group, Fx.Scale, Fx.Moved = nil, nil, nil
+            for _, G in Fx.Group do
+                G:Destroy()
+            end
+            Fx.Group, Fx.Moved = nil, nil
         end
 
         local function fxApply(P)
-            local Eased = 1 - (1 - P) ^ 3
-            Fx.Group.GroupTransparency = 1 - Eased
-            Fx.Scale.Scale = 0.96 + 0.04 * Eased
-            Fx.Group.Position = UDim2New(Fx.Group.AnchorPoint.X, 0, Fx.Group.AnchorPoint.Y, (1 - Eased) * 8)
+            local T = 1 - P
+            for _, G in Fx.Group do
+                G.GroupTransparency = T
+            end
         end
 
         function Window:SetOpen(Bool, Instant)
