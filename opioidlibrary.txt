@@ -501,13 +501,11 @@ local Library do
                 local GuiWidth = Gui.AbsoluteSize.X
                 local GuiHeight = Gui.AbsoluteSize.Y
 
-                -- Safe bounds for windowed mode: viewport can be smaller than GUI dimensions
                 local MinX = math.min(0, ViewportX - GuiWidth)
                 local MaxX = math.max(0, ViewportX - GuiWidth)
                 local MinY = math.min(0, ViewportY - GuiHeight)
                 local MaxY = math.max(0, ViewportY - GuiHeight)
 
-                -- Allow dragging off-screen as needed in windowed mode while keeping at least 40px reachable
                 local BoundMinX = math.min(MinX, -GuiWidth + 40)
                 local BoundMaxX = math.max(MaxX, ViewportX - 40)
                 local BoundMinY = math.min(MinY, -GuiHeight + 40)
@@ -713,13 +711,11 @@ local Library do
             local ttfAsset = safeCustomAsset(ttfPath)
             if not ttfAsset then return nil end
 
-            -- Format style to valid Roblox schema ("normal" or "italic")
             local jsonStyle = "normal"
             if style and (style:lower() == "italic" or style:lower() == "oblique") then
                 jsonStyle = "italic"
             end
 
-            -- Always rewrite the JSON file with the active session's fresh ttfAsset ID
             local fontData = {
                 name = name,
                 faces = { {
@@ -744,7 +740,6 @@ local Library do
                 end
             end
 
-            -- Fallback direct TTF asset load for executors supporting direct TTF
             local okTtf, directFont = pcall(function() return Font.new(ttfAsset) end)
             if okTtf and directFont then
                 return directFont
@@ -764,7 +759,6 @@ local Library do
             local jsonPath = Library.Folders.Assets .. "/" .. Name .. ".json"
             local ttfPath = Library.Folders.Assets .. "/" .. Name .. ".ttf"
 
-            -- 1. If valid cached TTF exists on disk, load immediately
             if isfile(ttfPath) then
                 local isTtfValid = false
                 pcall(function()
@@ -783,7 +777,6 @@ local Library do
                 end
             end
 
-            -- 2. Download TTF from primary URL, fallback URL, and CDN mirrors
             local urls = {}
             if Data then
                 if Data.Url then table.insert(urls, Data.Url) end
@@ -812,7 +805,6 @@ local Library do
                 end
             end
 
-            -- 3. Robust fallback font
             local fallback = Font.fromEnum(Enum.Font.GothamMedium)
             _fontCache[Name] = fallback
             return fallback
@@ -1313,7 +1305,134 @@ local Library do
         end)
     end
 
+    Library.MenuDim = 0.45
+    Library.MenuSnow = true
+    Library.MenuSnowAmount = 90
+    do
+        local Backdrop = { Alpha = 0, Target = 0, Open = { } }
+        Library.Backdrop = Backdrop
+        local Gui, Dim, SnowFolder, Flakes, StepConn = nil, nil, nil, { }, nil
+
+        local function build()
+            Gui = InstanceNew("ScreenGui")
+            Gui.Name = "\0"
+            Gui.ResetOnSpawn = false
+            Gui.IgnoreGuiInset = true
+            Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            Gui.DisplayOrder = (Library.Holder and Library.Holder.Instance and Library.Holder.Instance.DisplayOrder or 0) - 1
+            Dim = InstanceNew("Frame")
+            Dim.Name = "\0"
+            Dim.BorderSizePixel = 0
+            Dim.BackgroundColor3 = FromRGB(0, 0, 0)
+            Dim.BackgroundTransparency = 1
+            Dim.Size = UDim2New(1, 0, 1, 0)
+            Dim.Active = false
+            Dim.Parent = Gui
+            local Vig = InstanceNew("UIGradient")
+            Vig.Transparency = NumSequence({ NumSequenceKeypoint(0, 0), NumSequenceKeypoint(0.5, 0.35), NumSequenceKeypoint(1, 0) })
+            Vig.Parent = Dim
+            SnowFolder = InstanceNew("Frame")
+            SnowFolder.Name = "\0"
+            SnowFolder.BackgroundTransparency = 1
+            SnowFolder.Size = UDim2New(1, 0, 1, 0)
+            SnowFolder.Parent = Gui
+            Gui.Parent = gethui()
+        end
+
+        local function resetFlake(f, vp, anywhere)
+            local depth = math.random()
+            f.size = 1.5 + depth * 3.5
+            f.speed = 25 + depth * 70
+            f.drift = (math.random() - 0.5) * 20
+            f.sway = 6 + math.random() * 14
+            f.swaySpeed = 0.6 + math.random() * 1.2
+            f.phase = math.random() * math.pi * 2
+            f.alpha = 0.25 + depth * 0.55
+            f.x = math.random() * vp.X
+            f.y = anywhere and (math.random() * vp.Y) or (-10 - math.random() * 40)
+            return f
+        end
+
+        local function setFlakeCount(n, vp)
+            while #Flakes < n do
+                local f = resetFlake({ }, vp, true)
+                local fr = InstanceNew("Frame")
+                fr.Name = "\0"
+                fr.BorderSizePixel = 0
+                fr.BackgroundColor3 = FromRGB(255, 255, 255)
+                fr.AnchorPoint = Vector2New(0.5, 0.5)
+                local c = InstanceNew("UICorner")
+                c.CornerRadius = UDimNew(1, 0)
+                c.Parent = fr
+                fr.Parent = SnowFolder
+                f.frame = fr
+                Flakes[#Flakes + 1] = f
+            end
+            while #Flakes > n do
+                local f = TableRemove(Flakes)
+                if f.frame then f.frame:Destroy() end
+            end
+        end
+
+        local function step(dt)
+            LPH_ATTRIBUTES(PRESET(FAST))
+            dt = math.min(dt, 0.1)
+            local rate = dt / ((Backdrop.Target > Backdrop.Alpha) and 0.3 or 0.2)
+            if Backdrop.Alpha < Backdrop.Target then
+                Backdrop.Alpha = math.min(Backdrop.Target, Backdrop.Alpha + rate)
+            elseif Backdrop.Alpha > Backdrop.Target then
+                Backdrop.Alpha = math.max(Backdrop.Target, Backdrop.Alpha - rate)
+            end
+            local a = Backdrop.Alpha
+            local eased = a * a * (3 - 2 * a)
+            Dim.BackgroundTransparency = 1 - MathClamp(Library.MenuDim or 0.45, 0, 1) * eased
+            local Cam = Workspace.CurrentCamera
+            local vp = Cam and Cam.ViewportSize or Vector2New(1920, 1080)
+            local want = (Library.MenuSnow ~= false) and MathFloor(MathClamp(Library.MenuSnowAmount or 90, 0, 400)) or 0
+            if #Flakes ~= want then setFlakeCount(want, vp) end
+            local t = os.clock()
+            for i = 1, #Flakes do
+                local f = Flakes[i]
+                f.y = f.y + f.speed * dt
+                f.x = f.x + f.drift * dt
+                if f.y > vp.Y + 10 then
+                    resetFlake(f, vp, false)
+                end
+                if f.x < -10 then f.x = f.x + vp.X + 20 elseif f.x > vp.X + 10 then f.x = f.x - vp.X - 20 end
+                local fr = f.frame
+                fr.Position = UDim2New(0, f.x + MathSin(t * f.swaySpeed + f.phase) * f.sway, 0, f.y)
+                fr.Size = UDim2New(0, f.size, 0, f.size)
+                fr.BackgroundTransparency = 1 - f.alpha * eased
+            end
+            if Backdrop.Alpha <= 0 and Backdrop.Target <= 0 then
+                if StepConn then StepConn:Disconnect() StepConn = nil end
+                Gui.Enabled = false
+            end
+        end
+
+        Backdrop.Set = function(Window, Open)
+            Backdrop.Open[Window] = Open and true or nil
+            Backdrop.Target = next(Backdrop.Open) and 1 or 0
+            if Backdrop.Target > 0 or Backdrop.Alpha > 0 then
+                if not Gui or not Gui.Parent then build() end
+                Gui.Enabled = true
+                if not StepConn then
+                    StepConn = RunService.RenderStepped:Connect(step)
+                end
+            end
+        end
+
+        Backdrop.Destroy = function()
+            if StepConn then StepConn:Disconnect() StepConn = nil end
+            if Gui then Gui:Destroy() Gui = nil end
+            table.clear(Flakes)
+        end
+    end
+
     Library.Unload = function(self)
+        if Library.Backdrop and Library.Backdrop.Destroy then
+            pcall(Library.Backdrop.Destroy)
+        end
         for Index, Value in self.Connections do
             Value.Connection:Disconnect()
         end
@@ -1383,11 +1502,6 @@ local Library do
         return Connection
     end
 
-    -- Shared input dispatch. Every dropdown, colorpicker (with its sub-dropdown and keyframe pickers), keybind, the context
-    -- menu, the window menu key... used to add its OWN permanent UserInputService.InputBegan / InputEnded connection: about
-    -- 300 in the script. Each connection is a separate handler thread the engine resumes, so every key press, click and
-    -- camera drag (right mouse) ran ~300 of them, almost all returning immediately. Elements now register a plain function
-    -- and ONE connection per signal calls them in a loop.
     Library.InputHandlers = { Began = {}, Ended = {}, Changed = {} }
     Library.InputHandlerConns = {}
     Library.InputCtx = {}
@@ -1429,8 +1543,6 @@ local Library do
         return handle
     end
 
-    -- tostring(KeyCode) / tostring(UserInputType) and GetFocusedTextBox(), worked out once per input event and shared by
-    -- every keybind (each keybind used to do all three itself, on every key press and release).
     Library.InputKeyStrings = function(self, Input)
         local ctx = self.InputCtx
         if ctx.Input ~= Input or not ctx.KeyStr then
@@ -1560,9 +1672,6 @@ local Library do
         Library._LoadingConfig = true
         local applied = 0
         local Success, Result = Library:SafeCall(function()
-            -- Animated colours (Rainbow, Fade, ...) are stopped first. A config that doesn't animate a colour has
-            -- nothing saved for its animation, so the old animation used to keep running after the load; one that
-            -- does gets it started again below when that value is applied.
             for _, Picker in Library.Colorpickers do
                 if Picker.StopAnimation then pcall(Picker.StopAnimation, Picker) end
             end
@@ -9118,7 +9227,7 @@ local Library do
                 local OptionText = Instances:Create("TextLabel", {
                     Parent = OptionButton.Instance,
                     Name = "\0",
-                    ZIndex = ParentZ + 5, -- above the list's background (it was left at 1 and drawn behind it)
+                    ZIndex = ParentZ + 5,
                     FontFace = Library.Font,
                     TextColor3 = FromRGB(200, 200, 208),
                     BorderColor3 = FromRGB(0, 0, 0),
@@ -9371,10 +9480,11 @@ local Library do
                 end
                 Value = tonumber(Value) or Data.Default or Data.Min
                 local newVal = Library:Round(MathClamp(Value, Data.Min, Data.Max), Data.Decimals)
-                if Slider.Value == newVal then
+                if Slider.Value == newVal and Slider._fired then
                     Library.Flags[Slider.Flag] = newVal
                     return
                 end
+                Slider._fired = true
                 Slider.Value = newVal
                 Library.Flags[Slider.Flag] = Slider.Value
 
@@ -9819,9 +9929,6 @@ local Library do
             local OldColor = Colorpicker.Color
             local OldAlpha = Colorpicker.Alpha
             local CurrentAnimation
-            -- Every start / stop of an animation bumps AnimGen; a running animation loop ends as soon as AnimGen has
-            -- moved on. AnimRestore: put the colour from before the animation back when it ends (only when the user
-            -- turns the animation off; not when switching to another one, and never when a config load stops it).
             local AnimGen, AnimRestore = 0, false
 
             local AnimationsDropdown, AnimationsDropdownItems
@@ -10180,8 +10287,6 @@ local Library do
                         AnimRestore = (Value == nil)
                         CurrentAnimation = Value
                         local myGen = AnimGen
-                        -- each loop checks this BEFORE recolouring, so once it's stopped nothing overwrites the
-                        -- colour anymore (a config's colour used to get one more animated frame on top of it)
                         local function stopped()
                             return AnimGen ~= myGen
                         end
@@ -10296,7 +10401,6 @@ local Library do
                                 end
                             end)
                         else
-                            -- no animation: its settings go away too
                             if KeyframeOneLabel and KeyframeTwoLabel and AnimationSpeedSlider then
                                 KeyframeOneLabel:SetVisibility(false)
                                 KeyframeTwoLabel:SetVisibility(false)
@@ -10360,9 +10464,6 @@ local Library do
                 AnimationSpeedSliderItems["Slider"].Instance.Size = UDim2New(1, -16, 0, 28)
                 AnimationSpeedSliderItems["Slider"].Instance.Visible = false
 
-                -- Used by LoadConfig: stops whatever animation runs on this colour and clears its dropdown, without
-                -- putting the old colour back (the config's colour is what should stay). If the config has an
-                -- animation for this colour, applying it starts that animation again.
                 function Colorpicker:StopAnimation()
                     if CurrentAnimation == nil and AnimationsDropdown.Value == nil then return end
                     AnimGen = AnimGen + 1
@@ -11332,7 +11433,6 @@ local Library do
                     Keybind:Set("MouseButton1")
                     Keybind.ConsumeUntilUp = true
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                    -- Right-click cancels key picking, does not bind right click
                     Keybind:Set(Keybind.Key or "None")
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
                     Keybind:Set("MouseButton3")
@@ -11361,7 +11461,6 @@ local Library do
             if not Keybind.Picking and Keybind.Key and Keybind.Key ~= "" and Keybind.Key ~= "None" and Keybind.Key ~= "nil" then
                 local KeyStr, TypeStr = Library:InputKeyStrings(Input)
                 if KeyStr == Keybind.Key or TypeStr == Keybind.Key then
-                    -- Press runs the user's callback, which may yield: keep it off the shared input loop.
                     if Keybind.Mode == "Toggle" then
                         task.spawn(Keybind.Press, Keybind)
                     elseif Keybind.Mode == "Hold" then
@@ -11666,15 +11765,120 @@ local Library do
             }):AddToTheme({Color = "Outline"})
         end
 
-        function Window:SetOpen(Bool)
-            if Window.IsOpen == Bool then
+        Window.OpenTime = 0.26
+        Window.CloseTime = 0.18
+        Window.Shown = Window.IsOpen
+        local Fx = { Progress = Window.IsOpen and 1 or 0, Token = 0 }
+
+        local function fxFrames()
+            local List = { Items["MainFrame"].Instance }
+            if Library.ESPPreviewFrame and Library.ESPPreviewFrame.Parent and Window == Library.MainWindow then
+                List[#List + 1] = Library.ESPPreviewFrame
+            end
+            return List
+        end
+
+        local function fxBegin()
+            if Fx.Group then return end
+            local Holder = Library.Holder.Instance
+            local Group = InstanceNew("CanvasGroup")
+            Group.Name = "\0"
+            Group.BackgroundTransparency = 1
+            Group.BorderSizePixel = 0
+            Group.AnchorPoint = Vector2New(0.5, 0.5)
+            Group.Position = UDim2New(0.5, 0, 0.5, 0)
+            Group.Size = UDim2New(1, 0, 1, 0)
+            Group.ZIndex = Items["MainFrame"].Instance.ZIndex
+            local Scale = InstanceNew("UIScale")
+            Scale.Parent = Group
+            Group.Parent = Holder
+            Fx.Group, Fx.Scale, Fx.Moved = Group, Scale, { }
+            local Main = Items["MainFrame"].Instance
+            local Center = Main.AbsolutePosition + Main.AbsoluteSize / 2
+            local Screen = Holder.AbsoluteSize
+            Group.AnchorPoint = Vector2New(Center.X / math.max(Screen.X, 1), Center.Y / math.max(Screen.Y, 1))
+            Group.Position = UDim2New(Group.AnchorPoint.X, 0, Group.AnchorPoint.Y, 0)
+            for _, F in fxFrames() do
+                Fx.Moved[#Fx.Moved + 1] = { Frame = F, Parent = F.Parent }
+                F.Parent = Group
+            end
+        end
+
+        local function fxEnd()
+            if not Fx.Group then return end
+            for _, M in Fx.Moved do
+                if M.Frame and M.Frame.Parent == Fx.Group then
+                    M.Frame.Parent = M.Parent
+                end
+            end
+            Fx.Group:Destroy()
+            Fx.Group, Fx.Scale, Fx.Moved = nil, nil, nil
+        end
+
+        local function fxApply(P)
+            local Eased = 1 - (1 - P) ^ 3
+            Fx.Group.GroupTransparency = 1 - Eased
+            Fx.Scale.Scale = 0.96 + 0.04 * Eased
+            Fx.Group.Position = UDim2New(Fx.Group.AnchorPoint.X, 0, Fx.Group.AnchorPoint.Y, (1 - Eased) * 8)
+        end
+
+        function Window:SetOpen(Bool, Instant)
+            if Window.IsOpen == Bool and not Instant then
                 return
             end
 
             Window.IsOpen = Bool
+            Library.Backdrop.Set(Window, Bool)
 
             local Frame = Items["MainFrame"].Instance
-            Frame.Visible = Bool
+            if not Bool then
+                for _, Value in Library.OpenFrames do
+                    if Value and Value.SetOpen then
+                        pcall(Value.SetOpen, Value, false)
+                    end
+                end
+            end
+
+            Fx.Token = Fx.Token + 1
+            local Token = Fx.Token
+            local Duration = Bool and Window.OpenTime or Window.CloseTime
+
+            if Instant or not Duration or Duration <= 0 then
+                fxEnd()
+                Fx.Progress = Bool and 1 or 0
+                Frame.Visible = Bool
+                Window.Shown = Bool
+                return
+            end
+
+            Window.Shown = true
+            Frame.Visible = true
+            fxBegin()
+            fxApply(Fx.Progress)
+
+            task.spawn(function()
+                local Start = Fx.Progress
+                local Goal = Bool and 1 or 0
+                local Total = math.abs(Goal - Start) * Duration
+                local T0 = os.clock()
+                while Fx.Token == Token do
+                    local K = Total > 0 and MathClamp((os.clock() - T0) / Total, 0, 1) or 1
+                    Fx.Progress = Start + (Goal - Start) * K
+                    if not Fx.Group then break end
+                    fxApply(Fx.Progress)
+                    if K >= 1 then break end
+                    RunService.RenderStepped:Wait()
+                end
+                if Fx.Token ~= Token then return end
+                if not Bool and Fx.Moved then
+                    for _, M in Fx.Moved do
+                        if M.Frame then M.Frame.Visible = false end
+                    end
+                end
+                fxEnd()
+                Frame.Visible = Bool
+                Window.Shown = Bool
+            end)
         end
 
         function Window:Search(Query)
@@ -11682,9 +11886,6 @@ local Library do
             local CleanQuery = not IsEmpty and string.lower(StringGSub(Query, "^%s*(.-)%s*$", "%1")) or ""
             local StrippedQuery = not IsEmpty and StringGSub(CleanQuery, "%s+", "") or ""
 
-            -- Every tab / subtab with matches gets a score; the search shows the best one, from any tab (it used to stay on
-            -- the current tab whenever that had any match at all, and never looked at the other subtabs of a tab).
-            -- Sections inside a SubPage point at the SubPage; its .Page is the real tab.
             local Scores, Order = { }, { }
             local function noteMatch(Owner, Score)
                 if not Owner then
@@ -11696,8 +11897,6 @@ local Library do
                 end
                 Scores[Owner] = Scores[Owner] + (Score or 1)
             end
-            -- A section named after the query ("Animation Player" for "animation") beats a single option that merely
-            -- contains it ("No Shoot Animation"); names starting with the query (or one of its words) rank higher.
             local function startsWith(Name)
                 Name = string.lower(StringGSub(Name or "", "<[^>]+>", ""))
                 return CleanQuery ~= "" and (string.sub(Name, 1, #CleanQuery) == CleanQuery or StringFind(Name, " " .. CleanQuery, 1, true) ~= nil)
@@ -11869,9 +12068,6 @@ local Library do
                 end
             end
 
-            -- Colorpickers / keybinds sitting on a toggle or label are features of their own, but they belong to that row:
-            -- show them whenever their row is shown (they used to vanish when the row matched and they did not), and
-            -- show the row when one of them matched (the button lives inside the row).
             if not IsEmpty then
                 for _, Feature in Window.Features do
                     local Row = Feature.ParentInstance
@@ -11889,7 +12085,6 @@ local Library do
             if IsEmpty or #Order == 0 then
                 return
             end
-            -- Best first. On a tie the tab you are already looking at wins (no pointless jump).
             local function isShown(Owner)
                 if Owner.Page then
                     return Owner.Page.Active and Owner.Active
@@ -11906,7 +12101,6 @@ local Library do
             Window:ShowSearchOwner(Order[1])
         end
 
-        -- Shows a search result: its tab (+ subtab). Used by Search and by Enter in the search box (next result).
         function Window:ShowSearchOwner(Owner)
             if not Owner then
                 return
@@ -11943,7 +12137,6 @@ local Library do
             end
         end
 
-        -- Clicking a tab / subtab yourself ends the search (clears the box, everything shows again).
         function Window:ClearSearch()
             local Box = Window.Elements and Window.Elements["SearchInput"]
             if Box and Box.Instance and Box.Instance.Text ~= "" then
@@ -11986,7 +12179,6 @@ local Library do
             Items["SearchIcon"]:Tween(CachedHoverTweenInfo, {ImageColor3 = Library.Theme.Text, ImageTransparency = 0.45})
             local Before = LastSearchText
             ApplySearch(Items["SearchInput"].Instance.Text)
-            -- Enter on an unchanged search: go to the next matching tab / subtab.
             if EnterPressed and Before == Items["SearchInput"].Instance.Text then
                 local Results = Window.SearchResults
                 if Results and #Results > 1 then
@@ -12012,6 +12204,10 @@ local Library do
         end)
 
         Window.Elements = Items
+        Library.MainWindow = Library.MainWindow or Window
+        if Window.IsOpen then
+            Library.Backdrop.Set(Window, true)
+        end
 
         return setmetatable(Window, Library)
     end
@@ -12297,12 +12493,10 @@ local Library do
 
         local RawIcon = Data.Icon or Data.icon
 
-        -- Resolve CustomAsset icons: Icon = "CustomAsset:Search.png" or "CustomAsset:/path/to/file.png"
         local ResolvedIconImage
         if RawIcon and type(RawIcon) == "string" then
             local customPath = RawIcon:match("^CustomAsset:(.+)$")
             if customPath then
-                -- If the path starts with / treat it as absolute, otherwise relative to Assets folder
                 if customPath:sub(1, 1) == "/" then
                     pcall(function() ResolvedIconImage = getcustomasset(customPath) end)
                 else
@@ -12317,7 +12511,7 @@ local Library do
 
             Name = Data.Name or Data.name,
             Icon = RawIcon or "9080568477801",
-            IconImage = ResolvedIconImage,  -- set if CustomAsset was used
+            IconImage = ResolvedIconImage,
             Columns = Data.Columns or Data.columns or 2,
 
             Active = false,
@@ -12408,7 +12602,6 @@ local Library do
                     Name = "\0"
                 }):AddToTheme({Color = "Text Border"})
             else
-                -- Use resolved CustomAsset image or fall back to rbxassetid
                 local iconImage = SubPage.IconImage or ("rbxassetid://" .. SubPage.Icon)
                 Items["Icon"] = Instances:Create("ImageLabel", {
                     Parent = Items["Inactive"].Instance,
@@ -14584,7 +14777,6 @@ local Library do
         local Debounce = false
         local FollowConn
 
-        -- True only while the dropdown and every ancestor frame are visible (page/subpage/window shown).
         local IsShown = function()
             local Current = Items["Dropdown"].Instance
             while Current and Current:IsA("GuiObject") do
@@ -14596,8 +14788,6 @@ local Library do
             return Current ~= nil
         end
 
-        -- The option list lives in the top-level holder while open, so the column ScrollingFrame
-        -- cannot clip it and later sections cannot draw over it.
         local ApplyOpen = function(Bool)
             Dropdown.IsOpen = Bool
 
