@@ -1391,18 +1391,24 @@ local Library do
             local want = (Library.MenuSnow ~= false) and MathFloor(MathClamp(Library.MenuSnowAmount or 90, 0, 400)) or 0
             if #Flakes ~= want then setFlakeCount(want, vp) end
             local t = os.clock()
+            local fading = eased ~= Backdrop.LastEased
+            Backdrop.LastEased = eased
             for i = 1, #Flakes do
                 local f = Flakes[i]
                 f.y = f.y + f.speed * dt
                 f.x = f.x + f.drift * dt
                 if f.y > vp.Y + 10 then
                     resetFlake(f, vp, false)
+                    f.dirty = true
                 end
                 if f.x < -10 then f.x = f.x + vp.X + 20 elseif f.x > vp.X + 10 then f.x = f.x - vp.X - 20 end
                 local fr = f.frame
                 fr.Position = UDim2New(0, f.x + MathSin(t * f.swaySpeed + f.phase) * f.sway, 0, f.y)
-                fr.Size = UDim2New(0, f.size, 0, f.size)
-                fr.BackgroundTransparency = 1 - f.alpha * eased
+                if f.dirty ~= false or fading then
+                    fr.Size = UDim2New(0, f.size, 0, f.size)
+                    fr.BackgroundTransparency = 1 - f.alpha * eased
+                    f.dirty = false
+                end
             end
             if Backdrop.Alpha <= 0 and Backdrop.Target <= 0 then
                 if StepConn then StepConn:Disconnect() StepConn = nil end
@@ -11765,64 +11771,7 @@ local Library do
             }):AddToTheme({Color = "Outline"})
         end
 
-        Window.OpenTime = 0.2
-        Window.CloseTime = 0.15
         Window.Shown = Window.IsOpen
-        local Fx = { Progress = Window.IsOpen and 1 or 0, Token = 0 }
-
-        local function fxFrames()
-            local List = { Items["MainFrame"].Instance }
-            if Library.ESPPreviewFrame and Library.ESPPreviewFrame.Parent and Window == Library.MainWindow then
-                List[#List + 1] = Library.ESPPreviewFrame
-            end
-            return List
-        end
-
-        local function fxBegin()
-            if Fx.Group then return end
-            Fx.Group, Fx.Moved = { }, { }
-            local Pad = 4
-            for _, F in fxFrames() do
-                local Group = InstanceNew("CanvasGroup")
-                Group.Name = "\0"
-                Group.BackgroundTransparency = 1
-                Group.BorderSizePixel = 0
-                Group.AnchorPoint = Vector2New(0, 0)
-                local Abs, Size = F.AbsolutePosition, F.AbsoluteSize
-                local Origin = F.Parent.AbsolutePosition
-                Group.Position = UDim2New(0, Abs.X - Origin.X - Pad, 0, Abs.Y - Origin.Y - Pad)
-                Group.Size = UDim2New(0, Size.X + Pad * 2, 0, Size.Y + Pad * 2)
-                Group.ZIndex = F.ZIndex
-                Group.Parent = F.Parent
-                Fx.Group[#Fx.Group + 1] = Group
-                Fx.Moved[#Fx.Moved + 1] = { Frame = F, Parent = F.Parent, Position = F.Position, AnchorPoint = F.AnchorPoint }
-                F.AnchorPoint = Vector2New(0, 0)
-                F.Position = UDim2New(0, Pad, 0, Pad)
-                F.Parent = Group
-            end
-        end
-
-        local function fxEnd()
-            if not Fx.Group then return end
-            for _, M in Fx.Moved do
-                if M.Frame and M.Frame.Parent and M.Frame.Parent:IsA("CanvasGroup") then
-                    M.Frame.Parent = M.Parent
-                    M.Frame.AnchorPoint = M.AnchorPoint
-                    M.Frame.Position = M.Position
-                end
-            end
-            for _, G in Fx.Group do
-                G:Destroy()
-            end
-            Fx.Group, Fx.Moved = nil, nil
-        end
-
-        local function fxApply(P)
-            local T = 1 - P
-            for _, G in Fx.Group do
-                G.GroupTransparency = T
-            end
-        end
 
         function Window:SetOpen(Bool, Instant)
             if Window.IsOpen == Bool and not Instant then
@@ -11830,9 +11779,9 @@ local Library do
             end
 
             Window.IsOpen = Bool
+            Window.Shown = Bool
             Library.Backdrop.Set(Window, Bool)
 
-            local Frame = Items["MainFrame"].Instance
             if not Bool then
                 for _, Value in Library.OpenFrames do
                     if Value and Value.SetOpen then
@@ -11841,46 +11790,7 @@ local Library do
                 end
             end
 
-            Fx.Token = Fx.Token + 1
-            local Token = Fx.Token
-            local Duration = Bool and Window.OpenTime or Window.CloseTime
-
-            if Instant or not Duration or Duration <= 0 then
-                fxEnd()
-                Fx.Progress = Bool and 1 or 0
-                Frame.Visible = Bool
-                Window.Shown = Bool
-                return
-            end
-
-            Window.Shown = true
-            Frame.Visible = true
-            fxBegin()
-            fxApply(Fx.Progress)
-
-            task.spawn(function()
-                local Start = Fx.Progress
-                local Goal = Bool and 1 or 0
-                local Total = math.abs(Goal - Start) * Duration
-                local T0 = os.clock()
-                while Fx.Token == Token do
-                    local K = Total > 0 and MathClamp((os.clock() - T0) / Total, 0, 1) or 1
-                    Fx.Progress = Start + (Goal - Start) * K
-                    if not Fx.Group then break end
-                    fxApply(Fx.Progress)
-                    if K >= 1 then break end
-                    RunService.RenderStepped:Wait()
-                end
-                if Fx.Token ~= Token then return end
-                if not Bool and Fx.Moved then
-                    for _, M in Fx.Moved do
-                        if M.Frame then M.Frame.Visible = false end
-                    end
-                end
-                fxEnd()
-                Frame.Visible = Bool
-                Window.Shown = Bool
-            end)
+            Items["MainFrame"].Instance.Visible = Bool
         end
 
         function Window:Search(Query)
