@@ -335,8 +335,8 @@ local Library do
                 return
             end
 
-            Tween:Pause()
-            self = nil
+            self.Tween:Cancel()
+            self.Tween = nil
         end
 
         Tween.GetProperty = function(self, Item)
@@ -469,6 +469,7 @@ local Library do
                 return
             end
 
+            Library:ForgetTheme(self.Instance)
             self.Instance:Destroy()
             self = nil
         end
@@ -1470,6 +1471,18 @@ local Library do
 
         TableInsert(self.Threads, NewThread)
 
+        self.ThreadAdds = (self.ThreadAdds or 0) + 1
+        if self.ThreadAdds >= 128 then
+            self.ThreadAdds = 0
+            local Live = { }
+            for _, T in self.Threads do
+                if coroutine.status(T) ~= "dead" then
+                    Live[#Live + 1] = T
+                end
+            end
+            self.Threads = Live
+        end
+
         return NewThread
     end
 
@@ -1495,7 +1508,10 @@ local Library do
     end
 
     Library.Connect = function(self, Event, Callback, Name)
-        Name = Name or StringFormat("Connection_%s_%s", self.UnnamedConnections + 1, HttpService:GenerateGUID(false))
+        if not Name then
+            self.UnnamedConnections = self.UnnamedConnections + 1
+            Name = "Connection_" .. self.UnnamedConnections
+        end
 
         local Connection = Event:Connect(Callback)
         local ConnectionTable = {
@@ -1504,6 +1520,18 @@ local Library do
         }
 
         TableInsert(self.Connections, ConnectionTable)
+
+        self.ConnAdds = (self.ConnAdds or 0) + 1
+        if self.ConnAdds >= 256 then
+            self.ConnAdds = 0
+            local Live = { }
+            for _, C in self.Connections do
+                if C.Connection and C.Connection.Connected ~= false then
+                    Live[#Live + 1] = C
+                end
+            end
+            self.Connections = Live
+        end
 
         return Connection
     end
@@ -1623,6 +1651,36 @@ local Library do
 
         TableInsert(self.ThemeItems, ThemeData)
         self.ThemeMap[Item] = ThemeData
+    end
+
+    Library.ForgetTheme = function(self, Root)
+        if typeof(Root) ~= "Instance" then
+            return
+        end
+        local Dead = 0
+        local function Forget(Inst)
+            local Data = self.ThemeMap[Inst]
+            if Data then
+                self.ThemeMap[Inst] = nil
+                Data.Dead = true
+                Dead = Dead + 1
+            end
+        end
+        Forget(Root)
+        for _, D in Root:GetDescendants() do
+            Forget(D)
+        end
+        self.ThemeDead = (self.ThemeDead or 0) + Dead
+        if self.ThemeDead > 512 then
+            self.ThemeDead = 0
+            local Live = { }
+            for _, Data in self.ThemeItems do
+                if not Data.Dead then
+                    Live[#Live + 1] = Data
+                end
+            end
+            self.ThemeItems = Live
+        end
     end
 
     Library.GetConfig = function(self)
@@ -1767,7 +1825,7 @@ local Library do
         self.Theme[Theme] = Color
 
         for _, Item in self.ThemeItems do
-            local inst = Item and Item.Item
+            local inst = Item and not Item.Dead and Item.Item
             if inst then
                 for Property, Value in Item.Properties do
                     if type(Value) == "string" and Value == Theme then
@@ -3851,7 +3909,8 @@ local Library do
 
         local SpectateToggleOn = false
 
-        local SpectateToggle = DetailSection:Toggle({
+        local SpectateToggle
+        SpectateToggle = DetailSection:Toggle({
             Name = "Spectate",
             Default = false,
             Flag = "Playerlist_Spectate",
@@ -4233,6 +4292,7 @@ local Library do
         function Playerlist:Remove(Name)
             local Data = Playerlist.Players[Name]
             if Data then
+                Library:ForgetTheme(Data.Row)
                 Data.Row:Destroy()
             end
             Playerlist.Players[Name] = nil
@@ -4246,15 +4306,13 @@ local Library do
         function Playerlist:Refresh()
             for _, Data in Playerlist.Players do
                 if Data.AliveLabel then
-                    Data.AliveLabel.Text = IsAlive(Data.Player) and "Yes" or "No"
+                    local T = IsAlive(Data.Player) and "Yes" or "No"
+                    if Data.AliveLabel.Text ~= T then Data.AliveLabel.Text = T end
                 end
                 if Data.DistanceLabel then
-                    Data.DistanceLabel.Text = tostring(GetDistance(Data.Player)) .. "st"
+                    local T = tostring(GetDistance(Data.Player)) .. "st"
+                    if Data.DistanceLabel.Text ~= T then Data.DistanceLabel.Text = T end
                 end
-            end
-
-            if Playerlist.CurrentPlayer then
-                UpdateDetailPanel(Playerlist.CurrentPlayer)
             end
         end
 
@@ -4286,6 +4344,10 @@ local Library do
                 Data.Status = Status
                 Data.StatusLabel.Text = Status
                 Data.StatusLabel.TextColor3 = StatusColors[Status] or StatusColors.Neutral
+                if Playerlist.CurrentPlayer == Player and Player ~= LocalPlayer then
+                    DetailStatus.Text = "Status: " .. Status
+                    DetailStatus.TextColor3 = StatusColors[Status] or StatusColors.Neutral
+                end
             end
         end
 
@@ -6407,6 +6469,10 @@ local Library do
         task.spawn(function()
             local AnimationCheckTimer = 0
             while true do
+                while not (Items["Window"] and Items["Window"].Instance.Visible
+                    and Library.Holder and Library.Holder.Instance and Library.Holder.Instance.Enabled) do
+                    task.wait(0.25)
+                end
                 pcall(DrawDummyESP)
 
                 AnimationCheckTimer = AnimationCheckTimer + 0.03
@@ -6436,13 +6502,17 @@ local Library do
 
         task.spawn(function()
             while true do
-                if not Dragging then
-                    CamAngle = CamAngle + 0.005
+                if Items["Window"] and Items["Window"].Instance.Visible then
+                    if not Dragging then
+                        CamAngle = CamAngle + 0.005
+                    end
+                    if VpCamera and VpCamera.Parent then
+                        UpdateCamera()
+                    end
+                    task.wait(0.016)
+                else
+                    task.wait(0.25)
                 end
-                if VpCamera and VpCamera.Parent then
-                    UpdateCamera()
-                end
-                task.wait(0.016)
             end
         end)
 
@@ -7429,16 +7499,20 @@ local Library do
                 end
             end)
 
-            Entry.Button:Connect("MouseButton1Down", function()
+            local function Select()
                 InstanceTree.Selected = Instance
                 BuildPropsFor(Instance)
-                RebuildTree()
-            end)
+                for _, Other in RowEntries do
+                    if Other.Button and Other.Button.Instance and Other.Button.Instance.Parent then
+                        ApplySelectionVisual(Other)
+                    end
+                end
+            end
+
+            Entry.Button:Connect("MouseButton1Down", Select)
 
             Entry.Button:Connect("MouseButton2Down", function()
-                InstanceTree.Selected = Instance
-                BuildPropsFor(Instance)
-                RebuildTree()
+                Select()
                 OpenContextMenu(Instance)
             end)
 
@@ -8608,7 +8682,6 @@ local Library do
 
         Settings.Elements = {
             ConfigSection = ConfigSection,
-            ConfigList = ConfigList,
             UISettingsSection = UISettingsSection,
             AboutSection = AboutSection,
             WatermarkToggle = WatermarkToggle,
@@ -14673,6 +14746,7 @@ local Library do
         function Dropdown:Remove(Option)
             if Dropdown.Options[Option] then
                 Dropdown.Options[Option].Button:Clean()
+                Dropdown.Options[Option] = nil
             end
         end
 
