@@ -13,6 +13,7 @@ if not LPH_OBFUSCATED then
     if not UNROLL then UNROLL = function() end end
 end
 
+return (function(...)
 LPH_ATTRIBUTES(PRESET(FAST))
 
 -- spanish tech
@@ -12056,6 +12057,12 @@ local Library do
                 end
             end
 
+            for _, Div in (Window.Dividers or { }) do
+                if Div.Parent then
+                    Div.Visible = IsEmpty
+                end
+            end
+
             if not IsEmpty then
                 for _, Feature in Window.Features do
                     local Row = Feature.ParentInstance
@@ -13430,6 +13437,11 @@ local Library do
 
         function Divider:SetVisibility(Bool)
             Items["Divider"].Instance.Visible = Bool
+        end
+
+        if self.Window then
+            self.Window.Dividers = self.Window.Dividers or { }
+            TableInsert(self.Window.Dividers, Items["Divider"].Instance)
         end
 
         return Divider
@@ -17181,3 +17193,4 @@ if storeKey == "Library" then
     getgenv().Library = Library
 end
 return Library
+end)(...)
