@@ -114,10 +114,10 @@ local Library do
         },
 
         Folders = {
-            Directory = "chudvision.net",
-            Configs = "chudvision.net/Configs",
-            Assets = "chudvision.net/Assets",
-            Songs = "chudvision.net/Songs"
+            Directory = "neuro.net",
+            Configs = "neuro.net/Configs",
+            Assets = "neuro.net/Assets",
+            Songs = "neuro.net/Songs"
         },
 
         Images = {
@@ -8451,7 +8451,7 @@ local Library do
 
         local ESPPreviewToggle = UISettingsSection:Toggle({
             Name = "Show ESP Preview",
-            Default = true,
+            Default = false,
             Flag = "Settings_ESPPreview",
             Callback = function(Value)
                 if Library.ESPPreviewInstance and Library.ESPPreviewInstance.SetVisibility then
