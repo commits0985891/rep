@@ -13,6 +13,8 @@ if not LPH_OBFUSCATED then
     if not UNROLL then UNROLL = function() end end
 end
 
+LPH_ATTRIBUTES(PRESET(FAST))
+
 -- spanish tech
 
 -- this is a public library now, if you paid for it after this date (17/08/2026) then you got scammed
@@ -1376,7 +1378,7 @@ local Library do
         end
 
         local function step(dt)
-            LPH_ATTRIBUTES(PRESET(FAST))
+            LPH_ATTRIBUTES(VM(NONE))
             dt = math.min(dt, 0.1)
             local rate = dt / ((Backdrop.Target > Backdrop.Alpha) and 0.3 or 0.2)
             if Backdrop.Alpha < Backdrop.Target then
@@ -1546,6 +1548,7 @@ local Library do
                 or (Kind == "Ended" and UserInputService.InputEnded)
                 or UserInputService.InputChanged
             self.InputHandlerConns[Kind] = self:Connect(Signal, function(Input, Processed)
+                LPH_ATTRIBUTES(VM(NONE))
                 local ctx = Library.InputCtx
                 ctx.Input = Input
                 ctx.KeyStr = nil
@@ -14792,6 +14795,7 @@ local Library do
                 Items["Open"].Instance.Position = UDim2New(0, -5, 0, -1)
 
                 local Follow = function()
+                    LPH_ATTRIBUTES(VM(NONE))
                     if not IsShown() then
                         Dropdown:Close()
                         return
