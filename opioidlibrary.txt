@@ -1717,19 +1717,16 @@ local Library do
         pcall(function()
             local path = "neuro.net/config_load_debug.txt"
             if appendfile and isfile and isfile(path) then
-                appendfile(path, line .. "
-")
+                appendfile(path, line .. "\n")
             else
-                writefile(path, line .. "
-")
+                writefile(path, line .. "\n")
             end
         end)
     end
 
     Library.LoadConfig = function(self, Config)
         if Library.ConfigLoadDebug then
-            pcall(writefile, "neuro.net/config_load_debug.txt", os.date("%H:%M:%S") .. " LoadConfig start
-")
+            pcall(writefile, "neuro.net/config_load_debug.txt", os.date("%H:%M:%S") .. " LoadConfig start\n")
         end
         local SuccessDec, Decoded = pcall(function()
             return HttpService:JSONDecode(Config)
