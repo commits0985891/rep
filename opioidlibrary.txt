@@ -14270,6 +14270,8 @@ local Library do
         function Listbox:Remove(Option)
             if Listbox.Options[Option] then
                 Listbox.Options[Option].Button:Clean()
+                -- (the entry stayed behind: every refresh kept the destroyed rows, and Set / Refresh looped over all of them)
+                Listbox.Options[Option] = nil
             end
         end
 
