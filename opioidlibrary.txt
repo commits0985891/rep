@@ -1754,6 +1754,39 @@ local Library do
                     applied = applied + 1
                 end
             end
+            -- Everything the config doesn't mention goes back to its default. A setting never touched has no flag, so it
+            -- isn't saved: loading config A after B kept every B setting A didn't list (B's toggles stayed on).
+            -- Only flags that are set and differ from their default are reset (no callbacks for untouched ones).
+            local function same(a, b)
+                if type(a) ~= "table" or type(b) ~= "table" then
+                    return a == b
+                end
+                for k, v in pairs(a) do
+                    if b[k] ~= v then return false end
+                end
+                for k, v in pairs(b) do
+                    if a[k] ~= v then return false end
+                end
+                return true
+            end
+            for Flag, SetFunction in Library.SetFlags do
+                local Current = Library.Flags[Flag]
+                if Unwrapped[Flag] == nil and Flag ~= "Settings_NotifPosition" and Current ~= nil then
+                    local Default = Library.Defaults[Flag]
+                    if Default == nil and type(Current) == "boolean" then
+                        Default = false -- a toggle made without a Default starts off
+                    end
+                    if Default ~= nil and not same(Current, Default) then
+                        pcall(function()
+                            if type(Default) == "table" and Default.Color ~= nil then
+                                SetFunction(Default.Color, Default.Alpha)
+                            else
+                                SetFunction(Default)
+                            end
+                        end)
+                    end
+                end
+            end
         end)
         Library._LoadingConfig = false
         Library._ColorSyncing = false
