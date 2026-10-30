@@ -1709,7 +1709,28 @@ local Library do
         return HttpService:JSONEncode(Config)
     end
 
+    -- ═══ CONFIG LOAD DEBUG ═══ true = every setting is written to neuro.net/config_load_debug.txt right BEFORE it is applied
+    -- (the last line after a crash is the setting that crashed). Set back to false when done debugging.
+    Library.ConfigLoadDebug = true
+    local function cfgLog(line)
+        if not Library.ConfigLoadDebug then return end
+        pcall(function()
+            local path = "neuro.net/config_load_debug.txt"
+            if appendfile and isfile and isfile(path) then
+                appendfile(path, line .. "
+")
+            else
+                writefile(path, line .. "
+")
+            end
+        end)
+    end
+
     Library.LoadConfig = function(self, Config)
+        if Library.ConfigLoadDebug then
+            pcall(writefile, "neuro.net/config_load_debug.txt", os.date("%H:%M:%S") .. " LoadConfig start
+")
+        end
         local SuccessDec, Decoded = pcall(function()
             return HttpService:JSONDecode(Config)
         end)
@@ -1742,6 +1763,7 @@ local Library do
             for Flag, SetFunction in Library.SetFlags do
                 local Value = Unwrapped[Flag]
                 if Value ~= nil then
+                    cfgLog("apply " .. tostring(Flag))
                     pcall(function()
                         if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
                             SetFunction(Value)
@@ -1777,6 +1799,7 @@ local Library do
                         Default = false -- a toggle made without a Default starts off
                     end
                     if Default ~= nil and not same(Current, Default) then
+                        cfgLog("reset " .. tostring(Flag))
                         pcall(function()
                             if type(Default) == "table" and Default.Color ~= nil then
                                 SetFunction(Default.Color, Default.Alpha)
@@ -1790,6 +1813,7 @@ local Library do
         end)
         Library._LoadingConfig = false
         Library._ColorSyncing = false
+        cfgLog("done (library part; anything after this is the script's own after-load code)")
 
         if Success then
             Library:Notification("Successfully loaded config", 5, Color3.fromRGB(0, 255, 0))
