@@ -7298,6 +7298,32 @@ local Library do
 
         UISettingsSection:Divider()
 
+        local AntiAFKConnection
+        UISettingsSection:Toggle({
+            Name = "Anti AFK Kick",
+            Default = false,
+            Flag = "Settings_AntiAFKKick",
+            Callback = function(Value)
+                if AntiAFKConnection then
+                    AntiAFKConnection:Disconnect()
+                    AntiAFKConnection = nil
+                end
+                if not Value then return end
+                local VirtualUser = game:GetService("VirtualUser")
+                AntiAFKConnection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+                    local Camera = workspace.CurrentCamera
+                    local CamCFrame = Camera and Camera.CFrame or CFrame.new()
+                    pcall(function()
+                        VirtualUser:CaptureController()
+                        VirtualUser:Button2Down(Vector2.zero, CamCFrame)
+                    end)
+                    task.delay(0.1, function()
+                        pcall(VirtualUser.Button2Up, VirtualUser, Vector2.zero, CamCFrame)
+                    end)
+                end)
+            end
+        })
+
         local ESPPreviewToggle = UISettingsSection:Toggle({
             Name = "Show ESP Preview",
             Default = false,
