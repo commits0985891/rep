@@ -1734,70 +1734,11 @@ local Library do
         end
 
         Library._LoadingConfig = true
-        local applied = 0
-
-        -- Crash log: the flag about to run is written to neuro.net/config_load_log.txt BEFORE its callback, so after a hard
-        -- crash the file's last "RUN" line names the setting that took the game down. Slow callbacks are listed at the end.
-        -- Library.ConfigLoadDebug = false turns it off.
-        local debugOn = Library.ConfigLoadDebug ~= false and type(writefile) == "function"
-        local logPath = (Library.Folders and Library.Folders.Directory or "neuro.net") .. "/config_load_log.txt"
-        local logLines, slow = { }, { }
-        local canAppend = type(appendfile) == "function"
-        if debugOn then pcall(writefile, logPath, "") end
-        -- Without appendfile the whole file is rewritten, so that is only done every 25 lines (and at the end, flush(true)):
-        -- a rewrite per setting was ~700 rewrites per load.
-        local unflushed = 0
-        local function flush(force)
-            if canAppend or not debugOn then return end
-            if force or unflushed >= 25 then
-                unflushed = 0
-                pcall(writefile, logPath, table.concat(logLines, "\n"))
-            end
-        end
-        local function crumb(line)
-            if not debugOn then return end
-            -- the anti-tamper's file-write scan treats "lph_" as a Luraph dump, and "esp_fill_alpha_1" contains it
-            line = line:gsub("[Ll][Pp][Hh]", "l.ph")
-            if canAppend then
-                pcall(appendfile, logPath, line .. "\n")
-            else
-                logLines[#logLines + 1] = line
-                unflushed = unflushed + 1
-                flush(false)
-            end
-        end
-        local loadStart = os.clock()
-        local frameStart = os.clock()
-        -- Every callback used to run in one frame (2.5s+ frozen on raw source, far longer obfuscated). Hand the frame back
-        -- whenever this frame has used ~8ms.
-        local function budget()
-            if os.clock() - frameStart > 0.008 then
-                task.wait()
-                frameStart = os.clock()
-            end
-        end
-        local function run(Flag, fn)
-            crumb("RUN " .. tostring(Flag))
-            local t0 = os.clock()
-            local ok, err = pcall(fn)
-            local dt = os.clock() - t0
-            if dt > 0.004 then slow[#slow + 1] = { Flag, dt } end
-            -- (flag only: Lua error text like "(function expected)" can match the anti-tamper's file-write scan)
-            if not ok then crumb("ERR " .. tostring(Flag)) end
-            budget()
-        end
 
         local Success, Result = Library:SafeCall(function()
-            crumb("load start " .. os.date("%X"))
             for _, Picker in Library.Colorpickers do
                 if Picker.StopAnimation then pcall(Picker.StopAnimation, Picker) end
             end
-            -- Everything the config doesn't mention goes back to its default. A setting never touched has no flag, so it
-            -- isn't saved: loading config A after B kept every B setting A didn't list (B's toggles stayed on).
-            -- Only flags that are set and differ from their default are reset (no callbacks for untouched ones).
-            -- This runs BEFORE the new values: it ran after, so for the whole load every feature of the old config was
-            -- still on while every feature of the new one was switched on (two configs' worth of desyncs / hooks / models
-            -- at once, which only ever happens on a second load).
             local function same(a, b)
                 if type(a) ~= "table" or type(b) ~= "table" then
                     return a == b
@@ -1810,13 +1751,18 @@ local Library do
                 end
                 return true
             end
-            -- (a copy: the loops yield, and a table changed while next() walks it errors)
-            local Setters = { }
-            for Flag, SetFunction in Library.SetFlags do
-                Setters[#Setters + 1] = { Flag, SetFunction }
+            local function apply(SetFunction, Value)
+                if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
+                    SetFunction(Value)
+                elseif type(Value) == "table" and Value.Color ~= nil then
+                    SetFunction(Value.Color, Value.Alpha)
+                else
+                    SetFunction(Value)
+                end
             end
-            for _, Pair in Setters do
-                local Flag, SetFunction = Pair[1], Pair[2]
+
+            local Calls = { }
+            for Flag, SetFunction in Library.SetFlags do
                 local Current = Library.Flags[Flag]
                 if Unwrapped[Flag] == nil and Flag ~= "Settings_NotifPosition" and Current ~= nil then
                     local Default = Library.Defaults[Flag]
@@ -1824,46 +1770,28 @@ local Library do
                         Default = false -- a toggle made without a Default starts off
                     end
                     if Default ~= nil and not same(Current, Default) then
-                        run("reset " .. Flag, function()
-                            if type(Default) == "table" and Default.Color ~= nil then
-                                SetFunction(Default.Color, Default.Alpha)
-                            else
-                                SetFunction(Default)
-                            end
-                        end)
+                        Calls[#Calls + 1] = { SetFunction, Default }
                     end
                 end
             end
-            crumb("reset done")
-            for _, Pair in Setters do
-                local Flag, SetFunction = Pair[1], Pair[2]
+            for Flag, SetFunction in Library.SetFlags do
                 local Value = Unwrapped[Flag]
                 if Value ~= nil then
-                    run(Flag, function()
-                        if type(Value) == "table" and (Value.Key ~= nil or Value.Mode ~= nil) then
-                            SetFunction(Value)
-                        elseif type(Value) == "table" and Value.Color ~= nil then
-                            SetFunction(Value.Color, Value.Alpha)
-                        else
-                            SetFunction(Value)
-                        end
-                    end)
-                    applied = applied + 1
+                    Calls[#Calls + 1] = { SetFunction, Value }
+                end
+            end
+
+            local FRAMES = 2
+            local perFrame = math.max(1, math.ceil(#Calls / FRAMES))
+            for i, Call in Calls do
+                pcall(apply, Call[1], Call[2])
+                if i % perFrame == 0 and i < #Calls then
+                    task.wait()
                 end
             end
         end)
         Library._LoadingConfig = false
         Library._ColorSyncing = false
-
-        if debugOn then
-            table.sort(slow, function(a, b) return a[2] > b[2] end)
-            crumb(string.format("load done: %d flags in %.2fs", applied, os.clock() - loadStart))
-            crumb("slowest callbacks:")
-            for i = 1, math.min(#slow, 25) do
-                crumb(string.format("  %6.1fms  %s", slow[i][2] * 1000, tostring(slow[i][1])))
-            end
-            flush(true)
-        end
 
         if Success then
             Library:Notification("Successfully loaded config", 5, Color3.fromRGB(0, 255, 0))
