@@ -1710,6 +1710,13 @@ local Library do
     end
 
     Library.LoadConfig = function(self, Config)
+        local Now = os.clock()
+        if Library._LastConfigLoad and Now - Library._LastConfigLoad < 1 then
+            Library:Notification("You are on cooldown.", 3, FromRGB(255, 140, 0))
+            return
+        end
+        Library._LastConfigLoad = Now
+
         local SuccessDec, Decoded = pcall(function()
             return HttpService:JSONDecode(Config)
         end)
