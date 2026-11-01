@@ -12851,6 +12851,11 @@ local Library do
         end
         Button.SetVisibility = Button.SetVisiblity
 
+        function Button:SetText(Text)
+            Button.Name = Text
+            Items["Text"].Instance.Text = Button.Risky and ("[!] " .. Text) or Text
+        end
+
         Items["Button"]:Connect("MouseButton1Down", function()
             if Button.Risky and not Button.RiskConfirmed then
                 Library:RiskyPopup({
