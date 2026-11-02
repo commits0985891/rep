@@ -1240,7 +1240,7 @@ local Library do
             end
         end
 
-        local function spawnSnowflake()
+        local function spawnSnowflake() do return end
             local size = math.random(2, 5)
             local startX = math.random(0, 100) / 100
             local drift = (math.random(-15, 15)) / 100
@@ -1305,8 +1305,8 @@ local Library do
         end)
     end
 
-    Library.MenuDim = 0.45
-    Library.MenuSnow = true
+    Library.MenuDim = 0
+    Library.MenuSnow = false
     Library.MenuSnowAmount = 90
     do
         local Backdrop = { Alpha = 0, Target = 0, Open = { } }
@@ -7418,7 +7418,6 @@ local Library do
             Side = 1
         })
 
-        AboutSection:Label({ Name = "$$ neuro.net $$", Alignment = "Center" })
         AboutSection:Label({ Name = "This library is licensed as opioid$", Alignment = "Center" })
         AboutSection:Divider()
         AboutSection:Label({ Name = "- unvhook (backend, frontend [library]", Alignment = "Center" })
