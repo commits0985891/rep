@@ -14522,16 +14522,19 @@ local Library do
 
             local Styled = Listbox.Styled
             local DisplayText = StrOption
+            local RowMain, RowSub
+            local function Esc(Str)
+                return (Str:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+            end
+            local function BuildText(SubColor)
+                if not RowMain then
+                    return Esc(StrOption)
+                end
+                return Esc(RowMain) .. '  <font color="#' .. SubColor:ToHex() .. '">' .. Esc(RowSub) .. '</font>'
+            end
             if Styled then
-                local Main, Sub = StrOption:match("^(.-) %((@.-)%)$")
-                local function Esc(Str)
-                    return (Str:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
-                end
-                if Main then
-                    DisplayText = Esc(Main) .. '  <font color="#787884">' .. Esc(Sub) .. '</font>'
-                else
-                    DisplayText = Esc(StrOption)
-                end
+                RowMain, RowSub = StrOption:match("^(.-) %((@.-)%)$")
+                DisplayText = BuildText(FromRGB(120, 120, 132))
             end
 
             local OptionText = Instances:Create("TextLabel", {
@@ -14585,6 +14588,19 @@ local Library do
 
             function OptionData:Paint()
                 if not Styled then return end
+                if RowMain then
+                    local Base
+                    if OptionData.Selected then
+                        Base = Library.Theme.Accent
+                    elseif OptionData.ColorOverride then
+                        Base = OptionData.ColorOverride
+                    end
+                    local Sub = Base and Base:Lerp(FromRGB(20, 20, 25), 0.35) or FromRGB(120, 120, 132)
+                    local Text = BuildText(Sub)
+                    if OptionText.Instance.Text ~= Text then
+                        OptionText.Instance.Text = Text
+                    end
+                end
                 local Btn = OptionButton.Instance
                 if OptionData.Selected then
                     Btn.BackgroundColor3 = Library.Theme.Accent
