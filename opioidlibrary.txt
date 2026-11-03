@@ -2590,6 +2590,170 @@ local Library do
         return KeybindList
     end
 
+    -- Right-click menu: Library:ContextMenu({ Position = Vector2, Items = { { Text, Icon, Color, Callback } } }).
+    -- Opens at Position (mouse coordinates of the holder), closes on any click outside it, Escape, or picking an item.
+    Library.ContextMenu = function(self, Data)
+        Data = Data or { }
+        if Library._OpenContextMenu then
+            Library._OpenContextMenu()
+        end
+
+        local Closed = false
+        local Conns = { }
+        local Items = { }
+
+        local function Close()
+            if Closed then return end
+            Closed = true
+            Library._OpenContextMenu = nil
+            for _, c in Conns do
+                pcall(function() c:Disconnect() end)
+            end
+            if Items["Backdrop"] then
+                Items["Backdrop"]:Clean()
+            end
+        end
+        Library._OpenContextMenu = Close
+
+        Items["Backdrop"] = Instances:Create("TextButton", {
+            Parent = Library.Holder.Instance,
+            AutoButtonColor = false,
+            Text = "",
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Size = UDim2New(1, 0, 1, 0),
+            ZIndex = 2000,
+            Active = true,
+            Name = "\0"
+        })
+
+        Items["Menu"] = Instances:Create("Frame", {
+            Parent = Items["Backdrop"].Instance,
+            Size = UDim2New(0, 150, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundColor3 = FromRGB(20, 20, 25),
+            BorderColor3 = FromRGB(10, 10, 10),
+            BorderSizePixel = 2,
+            ZIndex = 2001,
+            Active = true,
+            Name = "\0"
+        })  Items["Menu"]:AddToTheme({BackgroundColor3 = "Background", BorderColor3 = "Border"})
+
+        Instances:Create("UIStroke", {
+            Parent = Items["Menu"].Instance,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            LineJoinMode = Enum.LineJoinMode.Miter,
+            Color = FromRGB(27, 27, 32),
+            Name = "\0"
+        }):AddToTheme({Color = "Outline"})
+
+        Instances:Create("UIListLayout", {
+            Parent = Items["Menu"].Instance,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDimNew(0, 1)
+        })
+
+        Instances:Create("UIPadding", {
+            Parent = Items["Menu"].Instance,
+            PaddingTop = UDimNew(0, 3),
+            PaddingBottom = UDimNew(0, 3),
+            PaddingLeft = UDimNew(0, 3),
+            PaddingRight = UDimNew(0, 3)
+        })
+
+        for Index, Entry in Data.Items or { } do
+            local Row = Instances:Create("TextButton", {
+                Parent = Items["Menu"].Instance,
+                AutoButtonColor = false,
+                Text = "",
+                LayoutOrder = Index,
+                Size = UDim2New(1, 0, 0, 22),
+                BackgroundColor3 = FromRGB(33, 33, 36),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                ZIndex = 2002,
+                Name = "\0"
+            })
+
+            local TextColor = Entry.Color or Library.Theme.Text
+            local Icon
+            if Entry.Icon and Entry.Icon ~= "" then
+                Icon = Instances:Create("ImageLabel", {
+                    Parent = Row.Instance,
+                    BackgroundTransparency = 1,
+                    Image = Entry.Icon,
+                    ImageColor3 = TextColor,
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Position = UDim2New(0, 6, 0.5, 0),
+                    Size = UDim2New(0, 14, 0, 14),
+                    ZIndex = 2003,
+                    Name = "\0"
+                })
+            end
+
+            local Label = Instances:Create("TextLabel", {
+                Parent = Row.Instance,
+                FontFace = Library.Font,
+                Text = tostring(Entry.Text or ""),
+                TextColor3 = TextColor,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, Icon and 27 or 8, 0, 0),
+                Size = UDim2New(1, Icon and -31 or -12, 1, 0),
+                ZIndex = 2003,
+                Name = "\0"
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Label.Instance,
+                LineJoinMode = Enum.LineJoinMode.Miter,
+                Name = "\0"
+            }):AddToTheme({Color = "Text Border"})
+
+            Row:Connect("MouseEnter", function()
+                Row.Instance.BackgroundColor3 = Library.Theme["Hovered Element"] or FromRGB(40, 40, 46)
+                Row.Instance.BackgroundTransparency = 0
+                if not Entry.Color then
+                    Label.Instance.TextColor3 = Library.Theme.Accent
+                    if Icon then Icon.Instance.ImageColor3 = Library.Theme.Accent end
+                end
+            end)
+            Row:Connect("MouseLeave", function()
+                Row.Instance.BackgroundTransparency = 1
+                Label.Instance.TextColor3 = TextColor
+                if Icon then Icon.Instance.ImageColor3 = TextColor end
+            end)
+            Row:Connect("MouseButton1Click", function()
+                Close()
+                if Entry.Callback then
+                    Library:SafeCall(Entry.Callback)
+                end
+            end)
+        end
+
+        local Pos = Data.Position or Vector2New(Mouse.X, Mouse.Y)
+        local Screen = Library.Holder.Instance.AbsoluteSize
+        task.defer(function()
+            if Closed then return end
+            local Size = Items["Menu"].Instance.AbsoluteSize
+            local X = math.clamp(Pos.X, 0, math.max(Screen.X - Size.X - 4, 0))
+            local Y = math.clamp(Pos.Y, 0, math.max(Screen.Y - Size.Y - 4, 0))
+            Items["Menu"].Instance.Position = UDim2New(0, X, 0, Y)
+        end)
+        Items["Menu"].Instance.Position = UDim2New(0, Pos.X, 0, Pos.Y)
+
+        Items["Backdrop"]:Connect("MouseButton1Down", Close)
+        Items["Backdrop"]:Connect("MouseButton2Down", Close)
+        Conns[#Conns + 1] = UserInputService.InputBegan:Connect(function(Input)
+            if Input.KeyCode == Enum.KeyCode.Escape then
+                Close()
+            end
+        end)
+
+        return { Close = Close }
+    end
+
     Library.RiskyPopup = function(self, Data)
         Data = Data or { }
 
@@ -14179,6 +14343,7 @@ local Library do
             Flag = Data.Flag or Data.flag or Library:NextFlag(),
             Callback = Data.Callback or Data.callback or function() end,
             Size = Data.Size or Data.size or 175,
+            OnRightClick = Data.OnRightClick or Data.onrightclick,
 
             Value = { },
             Options = { },
@@ -14387,10 +14552,18 @@ local Library do
                 if State == "Active" then
                     OptionData.Text:ChangeItemTheme({TextColor3 = "Accent"})
                     OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Accent, TextTransparency = 0})
+                elseif OptionData.ColorOverride then
+                    OptionData.Text:ChangeItemTheme({})
+                    OptionData.Text:Tween(nil, {TextColor3 = OptionData.ColorOverride, TextTransparency = 0.2})
                 else
                     OptionData.Text:ChangeItemTheme({TextColor3 = "Text"})
                     OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Text, TextTransparency = 0.48})
                 end
+            end
+
+            function OptionData:SetColor(Color)
+                OptionData.ColorOverride = typeof(Color) == "Color3" and Color or nil
+                OptionData:Toggle(OptionData.Selected and "Active" or "Inactive")
             end
 
             function OptionData:Set()
@@ -14438,8 +14611,22 @@ local Library do
                 OptionData:Set()
             end)
 
+            OptionButton:Connect("MouseButton2Click", function()
+                if Listbox.OnRightClick then
+                    Library:SafeCall(Listbox.OnRightClick, OptionData.Name, Vector2New(Mouse.X, Mouse.Y))
+                end
+            end)
+
             Listbox.Options[Option] = OptionData
             return OptionData
+        end
+
+        function Listbox:SetOptionColor(Name, Color)
+            for _, OptionData in Listbox.Options do
+                if OptionData.Name == Name then
+                    OptionData:SetColor(Color)
+                end
+            end
         end
 
         for Index, Value in Listbox.Items do
