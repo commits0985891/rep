@@ -14629,10 +14629,11 @@ local Library do
                         Position = UDim2New(1, -7, 0.5, 0),
                         Size = UDim2New(0, 18, 0, 18),
                         ImageColor3 = Library.Theme.Accent,
-                        ZIndex = ParentZ + 6
+                        ZIndex = OptionText.Instance.ZIndex + 1
                     })  OptionData.Icon:AddToTheme({ImageColor3 = "Accent"})
                 end
                 if OptionData.Icon then
+                    OptionData.Icon.Instance.ZIndex = OptionText.Instance.ZIndex + 1
                     OptionData.Icon.Instance.Visible = Has
                     if Has then OptionData.Icon.Instance.Image = Image end
                 end
