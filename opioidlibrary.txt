@@ -14626,8 +14626,8 @@ local Library do
                         BackgroundTransparency = 1,
                         BorderSizePixel = 0,
                         AnchorPoint = Vector2New(1, 0.5),
-                        Position = UDim2New(1, -8, 0.5, 0),
-                        Size = UDim2New(0, 12, 0, 12),
+                        Position = UDim2New(1, -7, 0.5, 0),
+                        Size = UDim2New(0, 18, 0, 18),
                         ImageColor3 = Library.Theme.Accent,
                         ZIndex = ParentZ + 6
                     })  OptionData.Icon:AddToTheme({ImageColor3 = "Accent"})
@@ -14636,7 +14636,7 @@ local Library do
                     OptionData.Icon.Instance.Visible = Has
                     if Has then OptionData.Icon.Instance.Image = Image end
                 end
-                local Pad = Has and 18 or 0
+                local Pad = Has and 24 or 0
                 OptionText.Instance.Size = Styled and UDim2New(1, -12 - Pad, 1, 0) or UDim2New(1, -5 - Pad, 1, 0)
             end
 
