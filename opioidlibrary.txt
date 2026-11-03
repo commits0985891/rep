@@ -14617,6 +14617,29 @@ local Library do
                 OptionData:Paint()
             end
 
+            function OptionData:SetIcon(Image)
+                local Has = type(Image) == "string" and Image ~= ""
+                if Has and not OptionData.Icon then
+                    OptionData.Icon = Instances:Create("ImageLabel", {
+                        Parent = OptionButton.Instance,
+                        Name = "\0",
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        AnchorPoint = Vector2New(1, 0.5),
+                        Position = UDim2New(1, -8, 0.5, 0),
+                        Size = UDim2New(0, 12, 0, 12),
+                        ImageColor3 = Library.Theme.Accent,
+                        ZIndex = ParentZ + 6
+                    })  OptionData.Icon:AddToTheme({ImageColor3 = "Accent"})
+                end
+                if OptionData.Icon then
+                    OptionData.Icon.Instance.Visible = Has
+                    if Has then OptionData.Icon.Instance.Image = Image end
+                end
+                local Pad = Has and 18 or 0
+                OptionText.Instance.Size = Styled and UDim2New(1, -12 - Pad, 1, 0) or UDim2New(1, -5 - Pad, 1, 0)
+            end
+
             function OptionData:SetColor(Color)
                 OptionData.ColorOverride = typeof(Color) == "Color3" and Color or nil
                 OptionData:Toggle(OptionData.Selected and "Active" or "Inactive")
