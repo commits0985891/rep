@@ -14345,6 +14345,7 @@ local Library do
             Size = Data.Size or Data.size or 175,
             OnRightClick = Data.OnRightClick or Data.onrightclick,
             RowHeight = Data.RowHeight or Data.rowheight or 15,
+            Styled = Data.Styled or Data.styled or false,
 
             Value = { },
             Options = { },
@@ -14484,6 +14485,9 @@ local Library do
                 Listbox.Options[Option].Button:Clean()
                 -- (the entry stayed behind: every refresh kept the destroyed rows, and Set / Refresh looped over all of them)
                 Listbox.Options[Option] = nil
+                if Listbox.Styled and Listbox.Restripe then
+                    Listbox:Restripe()
+                end
             end
         end
 
@@ -14516,18 +14520,34 @@ local Library do
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })
 
+            local Styled = Listbox.Styled
+            local DisplayText = StrOption
+            if Styled then
+                local Main, Sub = StrOption:match("^(.-) %((@.-)%)$")
+                local function Esc(Str)
+                    return (Str:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+                end
+                if Main then
+                    DisplayText = Esc(Main) .. '  <font color="#787884">' .. Esc(Sub) .. '</font>'
+                else
+                    DisplayText = Esc(StrOption)
+                end
+            end
+
             local OptionText = Instances:Create("TextLabel", {
                 Parent = OptionButton.Instance,
                 FontFace = Library.Font,
                 TextColor3 = FromRGB(215, 215, 215),
-                TextTransparency = 0.48,
-                Text = StrOption,
+                TextTransparency = Styled and 0.1 or 0.48,
+                Text = DisplayText,
+                RichText = Styled and true or false,
+                TextTruncate = Styled and Enum.TextTruncate.AtEnd or Enum.TextTruncate.None,
                 Name = "\0",
                 BorderColor3 = FromRGB(0, 0, 0),
-                Size = UDim2New(1, -5, 1, 0),
-                Position = UDim2New(0, 5, 0, 0),
+                Size = Styled and UDim2New(1, -12, 1, 0) or UDim2New(1, -5, 1, 0),
+                Position = Styled and UDim2New(0, 8, 0, 0) or UDim2New(0, 5, 0, 0),
                 BackgroundTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Center,
+                TextXAlignment = Styled and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center,
                 BorderSizePixel = 0,
                 ZIndex = ParentZ + 5,
                 TextSize = 12,
@@ -14546,8 +14566,42 @@ local Library do
                 Selected = false,
                 Name = StrOption,
                 Text = OptionText,
-                Button = OptionButton
+                Button = OptionButton,
+                Hovered = false,
+                Stripe = false
             }
+
+            if Styled then
+                OptionData.Bar = Instances:Create("Frame", {
+                    Parent = OptionButton.Instance,
+                    Name = "\0",
+                    BorderSizePixel = 0,
+                    Size = UDim2New(0, 2, 1, 0),
+                    BackgroundColor3 = Library.Theme.Accent,
+                    Visible = false,
+                    ZIndex = ParentZ + 6
+                })  OptionData.Bar:AddToTheme({BackgroundColor3 = "Accent"})
+            end
+
+            function OptionData:Paint()
+                if not Styled then return end
+                local Btn = OptionButton.Instance
+                if OptionData.Selected then
+                    Btn.BackgroundColor3 = Library.Theme.Accent
+                    Btn.BackgroundTransparency = 0.88
+                elseif OptionData.Hovered then
+                    Btn.BackgroundColor3 = FromRGB(255, 255, 255)
+                    Btn.BackgroundTransparency = 0.94
+                elseif OptionData.Stripe then
+                    Btn.BackgroundColor3 = FromRGB(0, 0, 0)
+                    Btn.BackgroundTransparency = 0.78
+                else
+                    Btn.BackgroundTransparency = 1
+                end
+                if OptionData.Bar then
+                    OptionData.Bar.Instance.Visible = OptionData.Selected == true
+                end
+            end
 
             function OptionData:Toggle(State)
                 if State == "Active" then
@@ -14555,11 +14609,12 @@ local Library do
                     OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Accent, TextTransparency = 0})
                 elseif OptionData.ColorOverride then
                     OptionData.Text:ChangeItemTheme({})
-                    OptionData.Text:Tween(nil, {TextColor3 = OptionData.ColorOverride, TextTransparency = 0.2})
+                    OptionData.Text:Tween(nil, {TextColor3 = OptionData.ColorOverride, TextTransparency = Styled and 0 or 0.2})
                 else
                     OptionData.Text:ChangeItemTheme({TextColor3 = "Text"})
-                    OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Text, TextTransparency = 0.48})
+                    OptionData.Text:Tween(nil, {TextColor3 = Library.Theme.Text, TextTransparency = Styled and 0.1 or 0.48})
                 end
+                OptionData:Paint()
             end
 
             function OptionData:SetColor(Color)
@@ -14612,6 +14667,17 @@ local Library do
                 OptionData:Set()
             end)
 
+            if Styled then
+                OptionButton:Connect("MouseEnter", function()
+                    OptionData.Hovered = true
+                    OptionData:Paint()
+                end)
+                OptionButton:Connect("MouseLeave", function()
+                    OptionData.Hovered = false
+                    OptionData:Paint()
+                end)
+            end
+
             OptionButton:Connect("MouseButton2Click", function()
                 if Listbox.OnRightClick then
                     Library:SafeCall(Listbox.OnRightClick, OptionData.Name, Vector2New(Mouse.X, Mouse.Y))
@@ -14619,7 +14685,35 @@ local Library do
             end)
 
             Listbox.Options[Option] = OptionData
+            if Styled then
+                Listbox:Restripe()
+            end
             return OptionData
+        end
+
+        local RestripeQueued = false
+        function Listbox:Restripe()
+            if RestripeQueued then return end
+            RestripeQueued = true
+            task.defer(function()
+                RestripeQueued = false
+                local Rows = { }
+                for _, OptionData in Listbox.Options do
+                    local Btn = OptionData.Button and OptionData.Button.Instance
+                    if Btn and Btn.Parent then
+                        Rows[#Rows + 1] = OptionData
+                    end
+                end
+                table.sort(Rows, function(A, B)
+                    local LA, LB2 = A.Button.Instance.LayoutOrder, B.Button.Instance.LayoutOrder
+                    if LA ~= LB2 then return LA < LB2 end
+                    return A.Button.Instance.AbsolutePosition.Y < B.Button.Instance.AbsolutePosition.Y
+                end)
+                for Index, OptionData in Rows do
+                    OptionData.Stripe = Index % 2 == 0
+                    OptionData:Paint()
+                end
+            end)
         end
 
         function Listbox:SetOptionColor(Name, Color)
