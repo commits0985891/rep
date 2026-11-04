@@ -10728,7 +10728,7 @@ local Library do
                 PlaceholderText = "Search...",
                 PlaceholderColor3 = FromRGB(130, 130, 140),
                 TextColor3 = FromRGB(215, 215, 215),
-                TextSize = 11,
+                TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left
             })  Items["SearchInput"]:AddToTheme({TextColor3 = "Text"})
 
