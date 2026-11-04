@@ -824,6 +824,7 @@ local Library do
         })
 
         Library.Font = tahoma or Font.fromEnum(Enum.Font.GothamMedium)
+        Library.Font = Font.fromEnum(Enum.Font.GothamMedium) -- TEMP TEST: force built-in font to isolate render vs font
         print("[neuro font] Library.Font =", tostring(Library.Font), "| tahoma =", tostring(tahoma))
     end
 
