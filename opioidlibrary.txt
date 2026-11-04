@@ -705,9 +705,24 @@ local Library do
             return nil
         end
 
+        local function fixSpaceWidth(path)
+            local ok, data = pcall(readfile, path)
+            if not ok or type(data) ~= "string" or #data < 420 then return path end
+            if data:sub(413, 414) ~= string.char(0, 160) then return path end
+            local fixedPath = path:gsub("%.ttf$", "") .. "-fixed.ttf"
+            local wrote = pcall(function()
+                writefile(fixedPath, data:sub(1, 412) .. string.char(0, 192) .. data:sub(415))
+            end)
+            if wrote and isfile(fixedPath) then
+                return fixedPath
+            end
+            return path
+        end
+
         local function createFontObject(ttfPath, jsonPath, name, weight, style)
             if not isfile(ttfPath) then return nil end
 
+            ttfPath = fixSpaceWidth(ttfPath)
             local ttfAsset = safeCustomAsset(ttfPath)
             if not ttfAsset then return nil end
 
