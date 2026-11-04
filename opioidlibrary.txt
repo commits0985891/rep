@@ -720,7 +720,7 @@ local Library do
                 name = name,
                 faces = { {
                     name = "Regular",
-                    weight = weight or 200,
+                    weight = weight or 400,
                     style = jsonStyle,
                     assetId = ttfAsset
                 } }
@@ -815,16 +815,15 @@ local Library do
             if _fontCache[Name] then
                 return _fontCache[Name]
             end
-            return CustomFont:New(Name, 200, "Regular", nil)
+            return CustomFont:New(Name, 400, "Regular", nil)
         end
 
-        local tahoma = CustomFont:New("Windows-XP-Tahoma", 200, "Regular", {
+        local tahoma = CustomFont:New("Windows-XP-Tahoma", 400, "Regular", {
             Url = "https://raw.githubusercontent.com/sametexe001/luas/main/fonts/windows-xp-tahoma.ttf",
             FallbackUrl = "https://cdn.jsdelivr.net/gh/sametexe001/luas@main/fonts/windows-xp-tahoma.ttf"
         })
 
         Library.Font = tahoma or Font.fromEnum(Enum.Font.GothamMedium)
-        Library.Font = Font.fromEnum(Enum.Font.GothamMedium) -- TEMP TEST: force built-in font to isolate render vs font
         print("[neuro font] Library.Font =", tostring(Library.Font), "| tahoma =", tostring(tahoma))
     end
 
