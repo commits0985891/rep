@@ -873,6 +873,27 @@ local Library do
         Padding = UDimNew(0, 10)
     })
 
+    -- Pixel font text blurs on half pixels: the holder (34% wide, centered) is rebuilt in whole pixels with an even width.
+    -- Library.NotifAnchor keeps the wanted scale position; Library:SnapHolder(frame, want) works for any such holder.
+    Library.NotifAnchor = { Position = UDim2New(0.5, 0, 0, 10), AnchorPoint = Vector2New(0.5, 0), Size = UDim2New(0.34, 0, 1, -14) }
+    function Library:SnapHolder(frame, want)
+        if not (frame and frame.Parent and want) then return end
+        local ps = frame.Parent.AbsoluteSize
+        local w = math.floor((want.Size.X.Scale * ps.X + want.Size.X.Offset) / 2) * 2
+        local h = math.floor(want.Size.Y.Scale * ps.Y + want.Size.Y.Offset)
+        local x = want.Position.X.Scale * ps.X + want.Position.X.Offset - want.AnchorPoint.X * w
+        local y = want.Position.Y.Scale * ps.Y + want.Position.Y.Offset - want.AnchorPoint.Y * h
+        frame.AnchorPoint = Vector2New(0, 0)
+        frame.Size = UDim2New(0, w, 0, h)
+        frame.Position = UDim2New(0, math.floor(x + 0.5), 0, math.floor(y + 0.5))
+    end
+    do
+        local inst = Library.NotifHolder.Instance
+        local function snap() Library:SnapHolder(inst, Library.NotifAnchor) end
+        if inst.Parent then inst.Parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(snap) end
+        snap()
+    end
+
     task.spawn(function()
         LPH_ATTRIBUTES(PRESET(FAST))
         while true do
@@ -2255,7 +2276,7 @@ local Library do
                 Color = FromRGB(27, 27, 32)
             }):AddToTheme({Color = "Outline"})
 
-            Instances:Create("UIPadding", {
+            Items["Padding"] = Instances:Create("UIPadding", {
                 Parent = Items["Notification"].Instance,
                 PaddingTop = UDimNew(0, isAvatar and 2 or 1),
                 PaddingRight = UDimNew(0, isAvatar and 10 or 8),
@@ -2269,13 +2290,15 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
-                Size = isAvatar and UDim2New(1, -32, 0, 16 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
+                -- avatar rows: a 16px label centred a 13px pixel-font line on a half pixel (blurry). 15px label at a whole-pixel
+                -- top (8 = centred next to the 24px headshot) keeps every glyph on the pixel grid, same as the plain rows.
+                Size = isAvatar and UDim2New(1, -32, 0, 15 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
                 BackgroundTransparency = 1,
-                Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0.5, 0) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
-                AnchorPoint = (isAvatar and lineCount <= 1) and Vector2New(0, 0.5) or Vector2New(0, 0),
+                Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0, 8) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
+                AnchorPoint = Vector2New(0, 0),
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.X,
-                TextSize = isAvatar and 13 or 12,
+                TextSize = 12,
                 TextYAlignment = (lineCount > 1) and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Title"]:AddToTheme({TextColor3 = "Text"})
@@ -2358,6 +2381,19 @@ local Library do
                     Items["Icon"].Instance.ImageColor3 = (typeof(Icon) == "table" and Icon[2]) or FromRGB(255, 255, 255)
                 end
             end
+        end
+
+        do
+            -- centered in the column, an odd-width notification sits half a pixel off and its text blurs: pad it to even
+            local title, pad = Items["Title"].Instance, Items["Padding"].Instance
+            local baseRight, extra = isAvatar and 10 or 8, 0
+            title:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+                local fx = title.AbsolutePosition.X % 1
+                if fx > 0.25 and fx < 0.75 then
+                    extra = 1 - extra
+                    pad.PaddingRight = UDimNew(0, baseRight + extra)
+                end
+            end)
         end
 
         Items["Notification"].Instance.BackgroundTransparency = 1
@@ -7445,6 +7481,9 @@ local Library do
                             Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
                         end
                     end
+                    -- keep the picked spot, then put the holder back on whole pixels
+                    Library.NotifAnchor = { Position = Inst.Position, AnchorPoint = Inst.AnchorPoint, Size = Library.NotifAnchor.Size }
+                    Library:SnapHolder(Inst, Library.NotifAnchor)
                 end
             end
         })
