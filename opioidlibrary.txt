@@ -12479,6 +12479,19 @@ local Library do
                 Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
             })
 
+            pcall(function()
+                Items["Glow"] = Instances:Create("UIShadow", {
+                    Parent = Items["Indicator"].Instance,
+                    Name = "\0",
+                    Offset = UDim2New(0, 0),
+                    BlurRadius = UDimNew(0, 6),
+                    Spread = UDim2New(0.5, 0.5),
+                    Color = Library.Theme.Accent,
+                    Transparency = 1
+                })
+                Items["Glow"]:AddToTheme({Color = "Accent"})
+            end)
+
             Items["Text"] = Instances:Create("TextLabel", {
                 Parent = Items["Toggle"].Instance,
                 FontFace = Library.Font,
@@ -12535,7 +12548,7 @@ local Library do
         -- Every colour / text change cancels the one before it: a direct write (config load) does not stop a tween that
         -- is still playing, and that tween (a hover, or a Set just before) finished later and painted the box back to
         -- "off" while the feature stayed on.
-        local IndicatorTween, TextTween
+        local IndicatorTween, TextTween, GlowTween
         local function Paint(Color, TextTrans, Instant)
             if IndicatorTween then IndicatorTween:Clean() IndicatorTween = nil end
             if TextTween then TextTween:Clean() TextTween = nil end
@@ -12593,6 +12606,28 @@ local Library do
                 else
                     Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Element", BorderColor3 = "Border"})
                     Paint(Library.Theme.Element, 0.48, Library._LoadingConfig)
+                end
+            end
+
+            local Glow = Items["Glow"] and Items["Glow"].Instance
+            if Glow and Glow.Parent then
+                local Target = Toggle.Value and 0.575 or 1
+                if GlowTween then GlowTween:Cancel() GlowTween = nil end
+                Glow.Color = Library.Theme.Accent
+                if Library._LoadingConfig then
+                    Glow.Transparency = Target
+                    Glow.Enabled = Toggle.Value
+                else
+                    Glow.Enabled = true
+                    GlowTween = TweenService:Create(Glow, CachedQuartTweenInfo, { Transparency = Target })
+                    GlowTween:Play()
+                    if not Toggle.Value then
+                        task.delay(0.3, function()
+                            if Glow and Glow.Parent and not Toggle.Value and Glow.Transparency >= 1 then
+                                Glow.Enabled = false
+                            end
+                        end)
+                    end
                 end
             end
 
