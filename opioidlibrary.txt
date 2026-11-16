@@ -873,6 +873,8 @@ local Library do
         Padding = UDimNew(0, 10)
     })
 
+    -- Pixel font text blurs on half pixels: the holder (34% wide, centered) is rebuilt in whole pixels with an even width.
+    -- Library.NotifAnchor keeps the wanted scale position; Library:SnapHolder(frame, want) works for any such holder.
     Library.NotifAnchor = { Position = UDim2New(0.5, 0, 0, 10), AnchorPoint = Vector2New(0.5, 0), Size = UDim2New(0.34, 0, 1, -14) }
     function Library:SnapHolder(frame, want)
         if not (frame and frame.Parent and want) then return end
@@ -2288,6 +2290,8 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
+                -- avatar rows: a 16px label centred a 13px pixel-font line on a half pixel (blurry). 15px label at a whole-pixel
+                -- top (8 = centred next to the 24px headshot) keeps every glyph on the pixel grid, same as the plain rows.
                 Size = isAvatar and UDim2New(1, -32, 0, 15 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
                 BackgroundTransparency = 1,
                 Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0, 8) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
@@ -2380,6 +2384,7 @@ local Library do
         end
 
         do
+            -- centered in the column, an odd-width notification sits half a pixel off and its text blurs: pad it to even
             local title, pad = Items["Title"].Instance, Items["Padding"].Instance
             local baseRight, extra = isAvatar and 10 or 8, 0
             title:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
@@ -2636,6 +2641,8 @@ local Library do
         return KeybindList
     end
 
+    -- Right-click menu: Library:ContextMenu({ Position = Vector2, Items = { { Text, Icon, Color, Callback } } }).
+    -- Opens at Position (mouse coordinates of the holder), closes on any click outside it, Escape, or picking an item.
     Library.ContextMenu = function(self, Data)
         Data = Data or { }
         if Library._OpenContextMenu then
@@ -3227,7 +3234,7 @@ local Library do
 
         local Frame = InstanceNew("Frame")
         Frame.Parent = Backdrop
-        Frame.Active = true
+        Frame.Active = true                          -- sink clicks so the frame itself doesn't fall through to the backdrop
         Frame.AnchorPoint = Vector2New(0.5, 0.5)
         Frame.Position = UDim2New(0.5, 0, 0.5, 0)
         Frame.Size = UDim2New(0, 320, 0, 0)
@@ -3330,7 +3337,7 @@ local Library do
         local ConfirmBtn = MakeButton(ConfirmText, 2, true)
         CancelBtn.MouseButton1Click:Connect(DoCancel)
         ConfirmBtn.MouseButton1Click:Connect(DoConfirm)
-        Backdrop.MouseButton1Click:Connect(DoCancel)
+        Backdrop.MouseButton1Click:Connect(DoCancel)   -- click outside the frame = cancel
         Box.FocusLost:Connect(function(enterPressed)
             if enterPressed then DoConfirm() end
         end)
@@ -7625,6 +7632,7 @@ local Library do
                             Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
                         end
                     end
+                    -- keep the picked spot, then put the holder back on whole pixels
                     Library.NotifAnchor = { Position = Inst.Position, AnchorPoint = Inst.AnchorPoint, Size = Library.NotifAnchor.Size }
                     Library:SnapHolder(Inst, Library.NotifAnchor)
                 end
@@ -8900,6 +8908,9 @@ local Library do
                 }):AddToTheme({Color = "Text Border"})
             end
 
+            -- Every colour / text change cancels the one before it: a direct write (config load) does not stop a tween
+            -- that is still playing, and that tween (a hover, or a Set just before) finished later and painted the box
+            -- back to "off" while the feature stayed on.
             local IndicatorTween, TextTween
             local function Paint(Color, TextTrans, Instant)
                 if IndicatorTween then IndicatorTween:Clean() IndicatorTween = nil end
@@ -12685,6 +12696,9 @@ local Library do
 
         end
 
+        -- Every colour / text change cancels the one before it: a direct write (config load) does not stop a tween that
+        -- is still playing, and that tween (a hover, or a Set just before) finished later and painted the box back to
+        -- "off" while the feature stayed on.
         local IndicatorTween, TextTween, GlowTween
         local function Paint(Color, TextTrans, Instant)
             if IndicatorTween then IndicatorTween:Clean() IndicatorTween = nil end
@@ -12748,7 +12762,7 @@ local Library do
 
             local Glow = Items["Glow"] and Items["Glow"].Instance
             if Glow and Glow.Parent then
-                local Target = Toggle.Value and 0.575 or 1
+                local Target = Toggle.Value and 0.6175 or 1
                 if GlowTween then GlowTween:Cancel() GlowTween = nil end
                 Glow.Color = Library.Theme.Accent
                 if Library._LoadingConfig then
@@ -14709,6 +14723,7 @@ local Library do
         function Listbox:Remove(Option)
             if Listbox.Options[Option] then
                 Listbox.Options[Option].Button:Clean()
+                -- (the entry stayed behind: every refresh kept the destroyed rows, and Set / Refresh looped over all of them)
                 Listbox.Options[Option] = nil
                 if Listbox.Styled and Listbox.Restripe then
                     Listbox:Restripe()
