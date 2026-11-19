@@ -170,6 +170,9 @@ local Library do
     local CachedHoverTweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local CachedQuartTweenInfo = TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
+    local BUILD_YIELD_EVERY = 50
+    local BuildYieldCount = 0
+
     local BevelGradient = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
     local EdgeFadeTransparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0), NumberSequenceKeypoint.new(0.75, 0), NumberSequenceKeypoint.new(1, 1)})
     local TransparencyProps = {
@@ -395,6 +398,11 @@ local Library do
 
             for Property, Value in Properties do
                 Inst[Property] = Value
+            end
+
+            BuildYieldCount = BuildYieldCount + 1
+            if BuildYieldCount % BUILD_YIELD_EVERY == 0 then
+                pcall(task.wait)
             end
 
             return NewItem
