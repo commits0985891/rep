@@ -1524,7 +1524,15 @@ local Library do
         local NewThread = coroutine.create(Function)
 
         coroutine.wrap(function()
-            coroutine.resume(NewThread)
+            local ok, err = coroutine.resume(NewThread)
+            if not ok then
+                local tb = ""
+                pcall(function() tb = debug.traceback(NewThread) end)
+                local msg = "[neuro] Thread error: " .. tostring(err) .. "\n" .. tostring(tb)
+                pcall(function() warn(msg) end)
+                pcall(function() if setclipboard then setclipboard(msg) end end)
+                pcall(function() Library:Notification("Thread error:\n" .. tostring(err), 12, FromRGB(255, 0, 0)) end)
+            end
         end)()
 
         TableInsert(self.Threads, NewThread)
