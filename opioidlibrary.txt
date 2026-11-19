@@ -14,7 +14,7 @@ if not LPH_OBFUSCATED then
 end
 
 return (function(...)
-LPH_ATTRIBUTES(PRESET(FAST))
+LPH_ATTRIBUTES(PRESET(FAST), ERROR_HANDLING(false))
 
 -- spanish tech
 
@@ -169,6 +169,19 @@ local Library do
     local CachedTweenInfo = TweenInfo.new(Library.Tween.Time, Library.Tween.Style, Library.Tween.Direction)
     local CachedHoverTweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local CachedQuartTweenInfo = TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local BevelGradient = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+    local EdgeFadeTransparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0), NumberSequenceKeypoint.new(0.75, 0), NumberSequenceKeypoint.new(1, 1)})
+    local TransparencyProps = {
+        ["TextLabel"] = "TextTransparency",
+        ["TextButton"] = "TextTransparency",
+        ["TextBox"] = "TextTransparency",
+        ["ImageLabel"] = "ImageTransparency",
+        ["ImageButton"] = "ImageTransparency",
+        ["Frame"] = "BackgroundTransparency",
+        ["ScrollingFrame"] = {"BackgroundTransparency", "ScrollBarImageTransparency"},
+        ["UIStroke"] = "Transparency",
+        ["CanvasGroup"] = "GroupTransparency"
+    }
     Library.CachedTweenInfo = CachedTweenInfo
     Library.CachedHoverTweenInfo = CachedHoverTweenInfo
 
@@ -370,16 +383,17 @@ local Library do
         Instances.__index = Instances
 
         Instances.Create = function(self, Class, Properties)
+            local Inst = InstanceNew(Class)
             local NewItem = {
-                Instance = InstanceNew(Class),
+                Instance = Inst,
                 Properties = Properties,
                 Class = Class
             }
 
             setmetatable(NewItem, Instances)
 
-            for Property, Value in NewItem.Properties do
-                NewItem.Instance[Property] = Value
+            for Property, Value in Properties do
+                Inst[Property] = Value
             end
 
             return NewItem
@@ -873,8 +887,6 @@ local Library do
         Padding = UDimNew(0, 10)
     })
 
-    -- Pixel font text blurs on half pixels: the holder (34% wide, centered) is rebuilt in whole pixels with an even width.
-    -- Library.NotifAnchor keeps the wanted scale position; Library:SnapHolder(frame, want) works for any such holder.
     Library.NotifAnchor = { Position = UDim2New(0.5, 0, 0, 10), AnchorPoint = Vector2New(0.5, 0), Size = UDim2New(0.34, 0, 1, -14) }
     function Library:SnapHolder(frame, want)
         if not (frame and frame.Parent and want) then return end
@@ -1145,7 +1157,7 @@ local Library do
         Instances:Create("UIGradient", {
             Parent = Items["YesButton"].Instance,
             Rotation = 90,
-            Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+            Color = BevelGradient
         })
 
         Instances:Create("UIStroke", {
@@ -1195,7 +1207,7 @@ local Library do
         Instances:Create("UIGradient", {
             Parent = Items["NoButton"].Instance,
             Rotation = 90,
-            Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+            Color = BevelGradient
         })
 
         Instances:Create("UIStroke", {
@@ -1643,18 +1655,6 @@ local Library do
     end
 
     Library.GetTransparencyPropertyFromItem = function(self, Item)
-        local TransparencyProps = {
-            ["TextLabel"] = "TextTransparency",
-            ["TextButton"] = "TextTransparency",
-            ["TextBox"] = "TextTransparency",
-            ["ImageLabel"] = "ImageTransparency",
-            ["ImageButton"] = "ImageTransparency",
-            ["Frame"] = "BackgroundTransparency",
-            ["ScrollingFrame"] = {"BackgroundTransparency", "ScrollBarImageTransparency"},
-            ["UIStroke"] = "Transparency",
-            ["CanvasGroup"] = "GroupTransparency"
-        }
-
         for Class, Prop in TransparencyProps do
             if Item:IsA(Class) then
                 return Prop
@@ -1884,7 +1884,6 @@ local Library do
         end
 
         self.ThemeMap[Item].Properties = Properties
-        self.ThemeMap[Item] = self.ThemeMap[Item]
     end
 
     Library.ChangeTheme = function(self, Theme, Color)
@@ -2167,12 +2166,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
         end
 
@@ -2290,8 +2284,6 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
-                -- avatar rows: a 16px label centred a 13px pixel-font line on a half pixel (blurry). 15px label at a whole-pixel
-                -- top (8 = centred next to the 24px headshot) keeps every glyph on the pixel grid, same as the plain rows.
                 Size = isAvatar and UDim2New(1, -32, 0, 15 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
                 BackgroundTransparency = 1,
                 Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0, 8) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
@@ -2324,12 +2316,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             if isAvatar then
@@ -2523,12 +2510,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             Instances:Create("UIPadding", {
@@ -4860,12 +4842,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             Instances:Create("UIPadding", {
@@ -7872,12 +7849,7 @@ local Library do
                     Parent = Items["AccentLine"].Instance,
                     Name = "\0",
                     Rotation = 0,
-                    Transparency = NumberSequence.new({
-                        NumberSequenceKeypoint.new(0, 1),
-                        NumberSequenceKeypoint.new(0.25, 0),
-                        NumberSequenceKeypoint.new(0.75, 0),
-                        NumberSequenceKeypoint.new(1, 1)
-                    })
+                    Transparency = EdgeFadeTransparency
                 })
 
                 Items["PageContent"] = Instances:Create("Frame", {
@@ -8171,7 +8143,7 @@ local Library do
                     Parent = Items["RealDropdown"].Instance,
                     Name = "\0",
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Instances:Create("UIStroke", {
@@ -8621,7 +8593,7 @@ local Library do
                     Parent = Items["RealSlider"].Instance,
                     Name = "\0",
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Instances:Create("UIStroke", {
@@ -8645,7 +8617,7 @@ local Library do
                     Parent = Items["Indicator"].Instance,
                     Name = "\0",
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Items["Value"] = Instances:Create("TextLabel", {
@@ -8880,7 +8852,7 @@ local Library do
                     Parent = Items["Indicator"].Instance,
                     Name = "\0",
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Items["Text"] = Instances:Create("TextLabel", {
@@ -9038,7 +9010,7 @@ local Library do
                         Parent = SubItems["NewButton"].Instance,
                         Name = "\0",
                         Rotation = 90,
-                        Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                        Color = BevelGradient
                     })
 
                     Instances:Create("UIStroke", {
@@ -9166,7 +9138,7 @@ local Library do
                     Parent = Items["ColorpickerButton"].Instance,
                     Name = "\0",
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Items["ColorpickerWindow"] = Instances:Create("TextButton", {
@@ -9203,12 +9175,7 @@ local Library do
                     Parent = Items["WindowAccentLine"].Instance,
                     Name = "\0",
                     Rotation = 0,
-                    Transparency = NumberSequence.new({
-                        NumberSequenceKeypoint.new(0, 1),
-                        NumberSequenceKeypoint.new(0.25, 0),
-                        NumberSequenceKeypoint.new(0.75, 0),
-                        NumberSequenceKeypoint.new(1, 1)
-                    })
+                    Transparency = EdgeFadeTransparency
                 })
 
                 Items["ColorpickerWindow"]:MakeDraggable()
@@ -11419,12 +11386,7 @@ local Library do
                 Instances:Create("UIGradient", {
                     Parent = Items["AccentLine"].Instance,
                     Rotation = 90,
-                    Transparency = NumberSequence.new({
-                        NumberSequenceKeypoint.new(0, 1),
-                        NumberSequenceKeypoint.new(0.25, 0),
-                        NumberSequenceKeypoint.new(0.75, 0),
-                        NumberSequenceKeypoint.new(1, 1)
-                    })
+                    Transparency = EdgeFadeTransparency
                 })
             end
 
@@ -11915,12 +11877,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             if Section.Collapsible then
@@ -12106,12 +12063,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             Items["Sections"] = Instances:Create("Frame", {
@@ -12393,12 +12345,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["AccentLine"].Instance,
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             Items["Text"] = Instances:Create("TextLabel", {
@@ -12627,7 +12574,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["Indicator"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             pcall(function()
@@ -13018,7 +12965,7 @@ local Library do
                 Instances:Create("UIGradient", {
                     Parent = BtnItems["Button"].Instance,
                     Rotation = 90,
-                    Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                    Color = BevelGradient
                 })
 
                 Instances:Create("UIStroke", {
@@ -13176,7 +13123,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["Button"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             Instances:Create("UIStroke", {
@@ -13371,7 +13318,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["RealSlider"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             Items["Indicator"] = Instances:Create("Frame", {
@@ -13386,7 +13333,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["Indicator"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             Items["Value"] = Instances:Create("TextLabel", {
@@ -13599,7 +13546,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["RealDropdown"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             Instances:Create("UIStroke", {
@@ -14459,7 +14406,7 @@ local Library do
             Instances:Create("UIGradient", {
                 Parent = Items["Background"].Instance,
                 Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
+                Color = BevelGradient
             })
 
             Instances:Create("UIStroke", {
@@ -15838,12 +15785,7 @@ local Library do
                 Parent = Items["SettingsAccent"].Instance,
                 Name = "\0",
                 Rotation = 0,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.25, 0),
-                    NumberSequenceKeypoint.new(0.75, 0),
-                    NumberSequenceKeypoint.new(1, 1)
-                })
+                Transparency = EdgeFadeTransparency
             })
 
             Items["SettingsContent"] = Instances:Create("ScrollingFrame", {
