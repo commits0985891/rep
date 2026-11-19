@@ -169,6 +169,11 @@ local Library do
     local CachedTweenInfo = TweenInfo.new(Library.Tween.Time, Library.Tween.Style, Library.Tween.Direction)
     local CachedHoverTweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local CachedQuartTweenInfo = TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+    local BUILD_YIELD_EVERY = 25
+    local BUILD_YIELD_WINDOW = 12
+    local BuildYieldStart = os.clock()
+    local BuildYieldCount = 0
     local BevelGradient = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(100, 100, 100))}
     local EdgeFadeTransparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0), NumberSequenceKeypoint.new(0.75, 0), NumberSequenceKeypoint.new(1, 1)})
     local TransparencyProps = {
@@ -394,6 +399,11 @@ local Library do
 
             for Property, Value in Properties do
                 Inst[Property] = Value
+            end
+
+            BuildYieldCount = BuildYieldCount + 1
+            if BuildYieldCount % BUILD_YIELD_EVERY == 0 and (os.clock() - BuildYieldStart) < BUILD_YIELD_WINDOW then
+                pcall(task.wait)
             end
 
             return NewItem
@@ -887,6 +897,8 @@ local Library do
         Padding = UDimNew(0, 10)
     })
 
+    -- Pixel font text blurs on half pixels: the holder (34% wide, centered) is rebuilt in whole pixels with an even width.
+    -- Library.NotifAnchor keeps the wanted scale position; Library:SnapHolder(frame, want) works for any such holder.
     Library.NotifAnchor = { Position = UDim2New(0.5, 0, 0, 10), AnchorPoint = Vector2New(0.5, 0), Size = UDim2New(0.34, 0, 1, -14) }
     function Library:SnapHolder(frame, want)
         if not (frame and frame.Parent and want) then return end
@@ -2284,6 +2296,8 @@ local Library do
                 BorderColor3 = FromRGB(0, 0, 0),
                 Text = Text,
                 Name = "\0",
+                -- avatar rows: a 16px label centred a 13px pixel-font line on a half pixel (blurry). 15px label at a whole-pixel
+                -- top (8 = centred next to the 24px headshot) keeps every glyph on the pixel grid, same as the plain rows.
                 Size = isAvatar and UDim2New(1, -32, 0, 15 + extraH) or UDim2New(1, 0, 0, 15 + extraH),
                 BackgroundTransparency = 1,
                 Position = (isAvatar and lineCount <= 1) and UDim2New(0, 32, 0, 8) or (isAvatar and UDim2New(0, 32, 0, 4) or UDim2New(0, 13, 0, 2)),
